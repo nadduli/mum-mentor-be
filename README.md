@@ -7,11 +7,11 @@ This is the Backend repo for the Application.
 
 1. **Fork the repository** and clone it:  
    ```sh
-   git clone https://github.com/Mum-Mentor-AI/Mum-Mentor-AI-Backend
+   git clone https://github.com/hngprojects/mum-mentor-be.git
    ```
 2. **Navigate into the project directory**:  
    ```sh
-   cd Mum-Mentor-AI-Backend
+   cd mum-mentor-be
    ```
 3. **Switch to the development branch** (if not already on `dev`):  
    ```sh
