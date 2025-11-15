@@ -8,40 +8,50 @@ body:
   - type: markdown
     attributes:
       value: |
-        ## Is your feature request related to a problem?  
-        A clear and concise description of the problem.  
-        Example: “I'm always frustrated when [...]”
+        ## Description
+        Describe your changes in detail.
 
   - type: textarea
-    id: problem
+    id: related_issue
     attributes:
-      label: Problem Description
-      placeholder: Describe the problem this feature aims to solve.
-    validations:
-      required: true
+      label: Related Issue (Link to issue ticket)
+      placeholder: Link to the issue related to this PR, if any.
 
   - type: textarea
-    id: solution
+    id: motivation
     attributes:
-      label: Describe the solution you'd like
-      placeholder: A clear and concise description of what you want to happen.
-    validations:
-      required: true
+      label: Motivation and Context
+      placeholder: Why is this change required? What problem does it solve?
 
   - type: textarea
-    id: alternatives
+    id: testing
     attributes:
-      label: Alternatives you've considered
-      placeholder: Describe any alternative solutions or features you've considered.
+      label: How Has This Been Tested?
+      placeholder: Describe in detail how you tested your changes.
 
   - type: textarea
     id: screenshots
     attributes:
-      label: Screenshots (if applicable — Postman, etc.)
+      label: Screenshots (if appropriate — Postman, etc.)
       placeholder: Add screenshots or related material.
 
-  - type: textarea
-    id: context
+  - type: checkboxes
+    id: types_of_changes
     attributes:
-      label: Additional context
-      placeholder: Add any other context or details here.
+      label: Types of changes
+      options:
+        - label: Bug fix (non-breaking change which fixes an issue)
+        - label: New feature (non-breaking change which adds functionality)
+        - label: Breaking change (fix or feature that would cause existing functionality to change)
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: My code follows the code style of this project.
+        - label: My change requires a change to the documentation.
+        - label: I have updated the documentation accordingly.
+        - label: I have read the **CONTRIBUTING** document.
+        - label: I have added tests to cover my changes.
+        - label: All new and existing tests passed.
