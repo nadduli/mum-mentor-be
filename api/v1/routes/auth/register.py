@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from api.v1.schemas.user.user import (
+from api.v1.schemas.user import (
     UserRegistrationRequest,
     UserRegistrationResponse
 )

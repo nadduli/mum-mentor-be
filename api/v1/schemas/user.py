@@ -1,7 +1,6 @@
 import re
-from datetime import datetime, date, time
+from datetime import datetime
 from typing import Any, Final
-from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -93,5 +92,3 @@ class UserRegistrationResponse(BaseModel):
             }
         }
     }
-
-

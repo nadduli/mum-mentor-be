@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api.v1.models.user.user import User
-from api.v1.schemas.user.user import UserRegistrationRequest
+from api.v1.schemas.user import UserRegistrationRequest
 from api.utils.user.security import hash_password
 from api.utils.logger import logger
 
