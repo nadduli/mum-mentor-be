@@ -1,0 +1,10 @@
+alembic
+fastapi
+psycopg2-binary
+sqlalchemy
+uvicorn
+sqlalchemy
+pydantic
+pydantic[email]
+python-dotenv
+aiosmtplib
