@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 from sqlalchemy import (
     Boolean, Column, String, Text, DateTime, Date, Time, ForeignKey,
     Integer, JSON
@@ -31,8 +31,8 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20), default="user")
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     profile = relationship("UserProfile", back_populates="user", uselist=False)
@@ -75,8 +75,8 @@ class UserProfile(Base):
     avatar_url: Mapped[str | None] = mapped_column(Text)
     bio: Mapped[str | None] = mapped_column(Text)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="profile")
 
@@ -101,8 +101,8 @@ class UserSettings(Base):
     community_visibility: Mapped[str] = mapped_column(String(20), default="public")
     data_sharing_consent: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="settings")
 
@@ -127,8 +127,8 @@ class UserAuthSession(Base):
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="sessions")
 
@@ -154,7 +154,7 @@ class UserOTPVerification(Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="otp_codes")
 
@@ -174,7 +174,7 @@ class Waitlist(Base):
 
     is_invited: Mapped[bool] = mapped_column(Boolean, default=False)
     invited_at: Mapped[datetime | None] = mapped_column(DateTime)
-    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class FAQ(Base):
@@ -197,8 +197,8 @@ class FAQ(Base):
         ForeignKey("users.id")
     )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class UserActivityLog(Base):
@@ -216,6 +216,6 @@ class UserActivityLog(Base):
     user_agent: Mapped[str | None] = mapped_column(Text)
     activity_metadata: Mapped[dict | None] = mapped_column(JSON)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="activities")
