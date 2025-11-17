@@ -16,7 +16,7 @@ def create_waitlist_entry(db: Session, data: WaitlistCreate):
     new_entry = Waitlist(
         full_name=data.full_name,
         email=data.email.lower(),
-        referral_source=data.source,
+        # referral_source=data.source,
     )
 
     try:
