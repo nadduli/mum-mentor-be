@@ -8,6 +8,7 @@ from api.utils.responses import success_response, fail_response
 
 router = APIRouter()
 
+
 @router.post("/waitlist", status_code=status.HTTP_201_CREATED)
 async def join_waitlist(data: WaitlistCreate, db: Session = Depends(get_db)):
     new_entry, existing_entry = create_waitlist_entry(db, data)
@@ -18,30 +19,30 @@ async def join_waitlist(data: WaitlistCreate, db: Session = Depends(get_db)):
             message="Email already registered on waitlist",
             data={
                 "id": str(existing_entry.id),
-                "full_name": existing_entry.full_name,
+                "name": existing_entry.full_name,
                 "email": existing_entry.email,
-                "source": existing_entry.referral_source,
-                "joined_at": existing_entry.joined_at.isoformat() + "Z"
-            }
+                # "source": existing_entry.referral_source,
+                "joined_at": existing_entry.joined_at.isoformat() + "Z",
+            },
         )
 
     if new_entry is None:
         return fail_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Failed to create waitlist entry"
+            message="Failed to create waitlist entry",
         )
 
     # Send welcome email with user's name
     subject = "Welcome to Mum Mentor Waitlist!"
     body = f"""Hi {new_entry.full_name},
+You’ve officially secured your spot on the Nora waitlist, and we’re so excited to have you here! You’re one step closer to experiencing a new kind of support made just for mums like you.
+Soon, Nora will be right at your fingertips - ready to help you navigate motherhood with calm, clarity, and confidence. From trusted answers to personalised guidance, your journey is about to get a whole lot lighter.
+Psst… keep an eye on your inbox - we’re working on something truly special behind the scenes. The wait’s almost over, and trust us, it’s going to be worth it. Your motherhood experience is about to feel a lot more supported.
+Feeling the love?
+ Share Nora with another mum who’d appreciate a little extra support.
+ And don’t miss out on the early peeks and update.
+Welcome to Nora — we’re so happy you’re here."""
 
-Thank you for joining the Mum Mentor waitlist!
-
-We're excited to have you on board and will keep you updated on our launch.
-
-Best regards,
-The Mum Mentor Team"""
-    
     await send_email(new_entry.email, subject, body)
 
     return success_response(
@@ -51,7 +52,7 @@ The Mum Mentor Team"""
             "id": str(new_entry.id),
             "full_name": new_entry.full_name,
             "email": new_entry.email,
-            "source": new_entry.referral_source,
-            "joined_at": new_entry.joined_at.isoformat() + "Z"
-        }
+            # "source": new_entry.referral_source,
+            "joined_at": new_entry.joined_at.isoformat() + "Z",
+        },
     )
