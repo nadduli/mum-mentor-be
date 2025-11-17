@@ -19,7 +19,7 @@ async def join_waitlist(data: WaitlistCreate, db: Session = Depends(get_db)):
             message="Email already registered on waitlist",
             data={
                 "id": str(existing_entry.id),
-                "full_name": existing_entry.full_name,
+                "name": existing_entry.full_name,
                 "email": existing_entry.email,
                 # "source": existing_entry.referral_source,
                 "joined_at": existing_entry.joined_at.isoformat() + "Z",
