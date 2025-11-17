@@ -12,7 +12,7 @@ from api.v1.schemas.login import LoginRequest
 
 logger = logging.getLogger(__name__)
 
-login_router = APIRouter(prefix='/users')
+login_router = APIRouter(prefix='/auth')
 
 
 @login_router.post('/login', status_code=status.HTTP_200_OK)
