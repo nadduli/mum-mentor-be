@@ -1,6 +1,5 @@
 import os
-import datetime
-
+from datetime import datetime, timedelta, timezone
 import jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv
@@ -21,7 +20,7 @@ def create_access_token(user_id, role):
 
     payload = {
         "user": user,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=30),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
         "token_type": "access"
     }
 
@@ -37,7 +36,7 @@ def create_refresh_token(user_id, role):
     }
     payload = {
         "user": user,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(days=7),
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
         "token_type": "refresh"
     }
 

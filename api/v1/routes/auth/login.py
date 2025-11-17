@@ -1,14 +1,12 @@
 import logging
-
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from datetime import datetime, timedelta
-from pydantic import EmailStr, BaseModel
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from api.db.database import get_db
 from api.v1.models.user.user import User, UserAuthSession, UserActivityLog
 from api.utils.responses import auth_response
 from api.utils.auth_utils import verify_password, create_access_token, create_refresh_token, get_device_info
-from api.v1.schemas.login import LoginRequest
+from api.v1.schemas.login_schema import LoginRequest
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +36,7 @@ def login_route(request: LoginRequest, db: Session = Depends(get_db), client: Re
             db.commit()
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-        user.last_login_at = datetime.utcnow()
+        user.last_login_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(user)
 
@@ -51,7 +49,7 @@ def login_route(request: LoginRequest, db: Session = Depends(get_db), client: Re
             ip_address=ip_address,
             user_agent=user_agent,
             device_name=device_name,
-            expires_at=datetime.utcnow() + timedelta(days=7)
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7)
         )
 
         db.add(session)
