@@ -7,7 +7,7 @@ This is the Backend repo for the Application.
 
 1. **Fork the repository** and clone it:  
    ```sh
-   https://github.com/hngprojects/mum-mentor-be.git
+   git clone https://github.com/hngprojects/mum-mentor-be.git
    ```
 2. **Navigate into the project directory**:  
    ```sh
