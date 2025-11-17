@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.v1.routes import contact_router
+from api.v1.routes import app as api_v1_router
 import logging
 
 # Configure logging
@@ -27,7 +27,7 @@ app.add_middleware(
 )
 
 # Include API v1 routers
-app.include_router(contact_router, prefix="/api/v1")
+app.include_router(api_v1_router, prefix="/api/v1")
 
 @app.get("/")
 async def read_root():
