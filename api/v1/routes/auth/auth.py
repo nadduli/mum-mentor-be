@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from api.v1.schemas.user.user import (
     UserRegistrationRequest,
@@ -20,9 +20,9 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     summary="Register a new user",
     description="Create a new user account"
 )
-async def register_user(
+def register_user(
     user_data: UserRegistrationRequest,
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     """
     Register a new user account.
@@ -38,7 +38,7 @@ async def register_user(
     logger.info("Registration attempt for email: %s", user_data.email)
     
     # Create user
-    user, error = await UserService.create_user(db, user_data)
+    user, error = UserService.create_user(db, user_data)
     
     if error:
         logger.warning(
