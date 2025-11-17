@@ -16,7 +16,7 @@ login_router = APIRouter(prefix='/users')
 
 
 @login_router.post('/login', status_code=status.HTTP_200_OK)
-def login(request: LoginRequest, db: Session = Depends(get_db), client: Request = None):
+def login_route(request: LoginRequest, db: Session = Depends(get_db), client: Request = None):
     try:
         ip_address = client.client.host if client.client else None
         user_agent = client.headers.get("User-Agent")
