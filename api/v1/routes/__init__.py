@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from .waitlist import router as waitlist_router
+from .downloads import router as downloads_router
 from .register import router as auth_router
 from .change_password import change_password_router
 from .forgot_password import router as forgot_password_router
@@ -20,6 +21,7 @@ app.include_router(verify_otp_router)
 app.include_router(waitlist_router)
 app.include_router(reset_password_router)
 app.include_router(delete_account_router)
+app.include_router(downloads_router)
 
 
 
