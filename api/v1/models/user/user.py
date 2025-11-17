@@ -5,7 +5,7 @@ from sqlalchemy import (
     Integer, JSON
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from api.db import Base
+from api.db.database import Base
 
 
 class User(Base):
