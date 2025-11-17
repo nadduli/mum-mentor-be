@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Deployment script for Mum Mentor API on bare server
-# Usage: ./deploy.sh
+# Usage: sudo ./deploy.sh
 
 set -e  # Exit on error
 
@@ -11,7 +11,7 @@ echo "========================================="
 
 # Configuration
 APP_DIR="/var/www/mum-mentor-be"
-APP_USER="www-data"
+APP_USER="kaizen"
 VENV_DIR="$APP_DIR/venv"
 SERVICE_NAME="mum-mentor-api"
 
@@ -65,6 +65,7 @@ source "$VENV_DIR/bin/activate" || {
 
 # Install/update dependencies
 print_info "Installing dependencies..."
+pip install --upgrade pip
 pip install --no-cache-dir -r requirements.txt || {
     print_error "Failed to install dependencies"
     exit 1
