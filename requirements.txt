@@ -3,8 +3,10 @@ fastapi
 psycopg2-binary
 sqlalchemy
 uvicorn
-sqlalchemy
 pydantic
 pydantic[email]
 python-dotenv
 aiosmtplib
+pytest
+pytest-cov
+httpx
