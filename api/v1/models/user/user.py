@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, date, time, timezone
 from sqlalchemy import Boolean, String, Text, DateTime, Date, Time, ForeignKey, Integer, JSON
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from api.db.base_model import BaseModel
+from api.db.base_model import BaseModel, Base
 
 
 class User(BaseModel):
@@ -127,7 +127,7 @@ class UserOTPVerification(BaseModel):
     user = relationship("User", back_populates="otp_codes")
 
 
-class Waitlist(BaseModel):
+class Waitlist(Base):
     __tablename__ = "waitlist"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
