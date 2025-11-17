@@ -8,12 +8,7 @@ from api.db.database import get_db
 from api.v1.models.user.user import User, UserAuthSession, UserActivityLog
 from api.utils.responses import auth_response
 from api.utils.auth_utils import verify_password, create_access_token, create_refresh_token, get_device_info
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
+from api.v1.schemas.login import LoginRequest
 
 logger = logging.getLogger(__name__)
 

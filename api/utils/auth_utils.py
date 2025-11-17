@@ -8,7 +8,7 @@ from user_agents import parse
 
 load_dotenv()
 
-JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_SECRET = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 pwd_context = CryptContext(schemes="bcrypt", deprecated="auto")

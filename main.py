@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1.routes import app as api_v1_router
-from api.v1.routes.auth.auth_route import login_router
+from api.v1.routes.auth.login import login_router
 import logging
 
 logging.basicConfig(
