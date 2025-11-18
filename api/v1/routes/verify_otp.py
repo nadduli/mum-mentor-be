@@ -76,12 +76,6 @@ async def verify_otp(
         data={
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "user": {
-                "id": str(user.id),
-                "email": user.email,
-                "full_name": user.full_name,
-                "email_verified": user.email_verified,
-                "phone_verified": user.phone_verified
-            }
+            "user_id": user.id,
         }
     )
