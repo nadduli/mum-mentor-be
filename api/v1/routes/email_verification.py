@@ -22,7 +22,16 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
     "/verify-email",
     status_code=status.HTTP_200_OK,
     summary="Verify user email",
-    description="Verify user email address using verification token"
+    description="""
+        Verify a user's email address using a verification token.
+
+        This endpoint confirms a user's email by validating the verification token sent
+        to their registered email address.
+
+        ### How It Works
+        - The user receives an email containing a verification link with a *token*.
+        - The user clicks the link, which calls this endpoint.
+        - If the token is valid and not expired, the user's email is marked as verified."""
 )
 def verify_email(
     request: EmailVerificationRequest,
@@ -58,7 +67,16 @@ def verify_email(
     "/resend-verification",
     status_code=status.HTTP_200_OK,
     summary="Resend verification email",
-    description="Resend email verification link to user"
+    description="""Resend email verification link to user
+        Resend Email Verification Link
+
+        This endpoint allows a user to request a new email verification link if they
+        did not receive the original one or it has expired.
+
+        ### When to Use This
+        - The user registered but never received the verification email.
+        - The user’s previous verification token has expired.
+        - The user wants a fresh verification link."""
 )
 async def resend_verification(
     request: ResendVerificationRequest,
