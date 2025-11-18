@@ -4,25 +4,28 @@ from api.db.database import get_db
 from api.v1.schemas.reset_password import ResetPassword
 from api.v1.services.reset_password import reset_password_service
 from api.utils.responses import success_response
+from api.middleware import verify_token
 
 router = APIRouter()
 
 
 @router.patch("/reset-password", status_code=status.HTTP_200_OK)
-async def reset_password(request: ResetPassword, db: Session = Depends(get_db)):
+async def reset_password(
+    request: ResetPassword,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(verify_token)
+):
     """
     Reset user password endpoint
     
     Args:
         request: ResetPassword schema with old_password, new_password, confirm_password
         db: Database session
+        user_id: User ID from JWT token (extracted by verify_token middleware)
     
     Returns:
         Success response
     """
-    # TODO: Get user_id from JWT token once middleware is implemented
-    user_id = None  # Placeholder
-    
     reset_password_service(db, request, user_id)
     
     return success_response(
