@@ -1,8 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import DateTime, select
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, Session
 
 
 class Base(DeclarativeBase):
@@ -24,49 +23,49 @@ class BaseModel(Base):
         onupdate=lambda: datetime.now(timezone.utc)
     )
 
-    async def insert(self, db_session: AsyncSession, commit=True):
+    def insert(self, db_session: Session, commit=True):
         """Insert new object to db"""
         db_session.add(self)
         if commit:
-            await db_session.commit()
-            await db_session.refresh(self)
+            db_session.commit()
+            db_session.refresh(self)
         return self
 
-    async def update(self, db_session: AsyncSession, commit=True):
+    def update(self, db_session: Session, commit=True):
         """Save updates to the object"""
         self.updated_at = datetime.now(timezone.utc)
         if commit:
-            await db_session.commit()
-            await db_session.refresh(self)
+            db_session.commit()
+            db_session.refresh(self)
         return self
 
-    async def delete(self, db_session: AsyncSession, commit=True):
+    def delete(self, db_session: Session, commit=True):
         """Delete object from db"""
-        await db_session.delete(self)
+        db_session.delete(self)
         if commit:
-            await db_session.commit()
+            db_session.commit()
         return self
 
     @classmethod
-    async def fetch_one(cls, db_session: AsyncSession, **kwargs):
+    def fetch_one(cls, db_session: Session, **kwargs):
         """Get first matching object"""
-        result = await db_session.execute(
+        result = db_session.execute(
             select(cls).filter_by(**kwargs)
         )
         return result.scalars().first()
 
     @classmethod
-    async def fetch_unique(cls, db_session: AsyncSession, **kwargs):
+    def fetch_unique(cls, db_session: Session, **kwargs):
         """Get unique object or None"""
-        result = await db_session.execute(
+        result = db_session.execute(
             select(cls).filter_by(**kwargs)
         )
         return result.scalars().one_or_none()
 
     @classmethod
-    async def fetch_all(cls, db_session: AsyncSession, **kwargs):
+    def fetch_all(cls, db_session: Session, **kwargs):
         """Get all matching objects"""
-        result = await db_session.execute(
+        result = db_session.execute(
             select(cls).filter_by(**kwargs)
         )
         return result.scalars().all()
