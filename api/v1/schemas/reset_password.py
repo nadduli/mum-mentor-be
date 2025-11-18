@@ -1,10 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator
 from datetime import datetime
-import uuid
-
-class DummyModel(BaseModel):
-    user_id: str
-
 
 class ResetPassword(BaseModel):
     new_password: str

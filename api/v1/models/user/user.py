@@ -100,7 +100,7 @@ class UserAuthSession(BaseModel):
     user_agent: Mapped[str | None] = mapped_column(Text)
     ip_address: Mapped[str | None] = mapped_column(String(100))
 
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
 
@@ -119,7 +119,7 @@ class UserOTPVerification(BaseModel):
 
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     used: Mapped[bool] = mapped_column(Boolean, default=False)
-    used_at: Mapped[datetime | None] = mapped_column(DateTime)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)
