@@ -1,89 +1,112 @@
-from sqlalchemy.orm import Session
-from fastapi import HTTPException
-from datetime import datetime, timezone
+from typing import Optional, Tuple
 import uuid
+from datetime import datetime, timezone
+from sqlalchemy.orm import Session
 
 from api.v1.models.user.user import User, UserOTPVerification
-from api.v1.schemas.verify_otp import VerifyOTP
+from api.v1.schemas.verify_otp import VerifyOTPRequest
+from api.utils.logger import logger
 
+class VerifyOTPService:
+    """Service class for OTP verification operations"""
 
-def verify_otp_service(db: Session, data: VerifyOTP):
-    """
-    Verify an OTP code for a user. Enforces expiration and retry limits.
+    @staticmethod
+    def verify_otp(
+        db: Session,
+        data: VerifyOTPRequest
+    ) -> Tuple[Optional[User], Optional[str]]:
+        """
+        Verify an OTP code for a user
+        
+        Args:
+            db: Database session
+            data: OTP verification data
+            
+        Returns:
+            Tuple of (User object, error message)
+            Returns (User, None) on success
+            Returns (None, error_message) on failure
+        """
+        try:
+            # Convert user_id string to UUID
+            try:
+                user_uuid = uuid.UUID(data.user_id)
+            except ValueError:
+                return None, "Invalid user ID format"
 
-    Raises HTTPException on failure. On success marks the OTP as used and
-    updates user verification flags where applicable.
-    """
-    # Convert user_id string to UUID
-    try:
-        user_uuid = uuid.UUID(data.user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user ID format")
+            # Fetch user using BaseModel pattern
+            current_user = User.fetch_unique(db, id=user_uuid)
+            if not current_user:
+                return None, "User not found"
 
-    # Fetch user
-    current_user = db.query(User).filter(User.id == user_uuid).first()
-    if not current_user:
-        raise HTTPException(status_code=404, detail="User not found")
+            # Fetch latest matching unused OTP
+            otp_record = (
+                db.query(UserOTPVerification)
+                .filter(
+                    UserOTPVerification.user_id == current_user.id,
+                    UserOTPVerification.otp_type == data.otp_type,
+                    UserOTPVerification.used == False,
+                )
+                .order_by(UserOTPVerification.created_at.desc())
+                .first()
+            )
 
-    # Fetch latest matching unused OTP for the user and otp_type
-    otp_record = (
-        db.query(UserOTPVerification)
-        .filter(
-            UserOTPVerification.user_id == current_user.id,
-            UserOTPVerification.otp_type == data.otp_type,
-            UserOTPVerification.used == False,
-        )
-        .order_by(UserOTPVerification.created_at.desc())
-        .first()
-    )
+            if not otp_record:
+                return None, "OTP record not found"
 
-    if not otp_record:
-        raise HTTPException(status_code=404, detail="OTP record not found")
+            now = datetime.now(timezone.utc)
 
-    now = datetime.now(timezone.utc)
+            # Handle timezone for expires_at
+            expires_at = otp_record.expires_at
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-    # Make expires_at timezone-aware if it's naive (for SQLite compatibility)
-    expires_at = otp_record.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
+            # Check expiration
+            if expires_at < now:
+                otp_record.used = True
+                otp_record.update(db)
+                return None, "OTP has expired"
 
-    # Check expiration
-    if expires_at < now:
-        otp_record.used = True
-        db.add(otp_record)
-        db.commit()
-        raise HTTPException(status_code=400, detail="OTP has expired")
+            # Check attempt limits
+            if otp_record.attempts >= otp_record.max_attempts:
+                otp_record.used = True
+                otp_record.update(db)
+                return None, "OTP locked due to too many attempts"
 
-    # Check if already exceeded attempts
-    if otp_record.attempts >= otp_record.max_attempts:
-        otp_record.used = True
-        db.add(otp_record)
-        db.commit()
-        raise HTTPException(status_code=403, detail="OTP locked due to too many attempts")
+            # Validate OTP code
+            if otp_record.otp_code != data.otp_code:
+                otp_record.attempts = (otp_record.attempts or 0) + 1
+                if otp_record.attempts >= otp_record.max_attempts:
+                    otp_record.used = True
+                otp_record.update(db)
+                return None, "Invalid OTP code"
 
-    # Validate code
-    if otp_record.otp_code != data.otp_code:
-        otp_record.attempts = (otp_record.attempts or 0) + 1
-        if otp_record.attempts >= otp_record.max_attempts:
+            # Successful verification
             otp_record.used = True
-        db.add(otp_record)
-        db.commit()
-        raise HTTPException(status_code=401, detail="Invalid OTP code")
+            otp_record.used_at = now
+            otp_record.update(db)
 
-    # Successful verification
-    otp_record.used = True
-    otp_record.used_at = now
-    db.add(otp_record)
+            # Update user verification status
+            otp_type = data.otp_type.lower()
+            if otp_type in ("email_verification", "email", "register"):
+                current_user.email_verified = True
+            elif otp_type in ("phone_verification", "phone"):
+                current_user.phone_verified = True
+            
+            current_user.update(db)
 
-    # Update user's verified status depending on otp_type
-    t = data.otp_type.lower()
-    if t in ("email_verification", "email", "register"):
-        current_user.email_verified = True
-    if t in ("phone_verification", "phone"):
-        current_user.phone_verified = True
+            logger.info(
+                "OTP verification successful for user: %s, type: %s",
+                current_user.email,
+                data.otp_type
+            )
+            return current_user, None
 
-    db.add(current_user)
-    db.commit()
-    db.refresh(current_user)
-
-    return current_user
+        except Exception as e:
+            logger.error(
+                "Error during OTP verification for user_id %s: %s",
+                data.user_id,
+                str(e),
+                exc_info=True
+            )
+            return None, "An error occurred during OTP verification"

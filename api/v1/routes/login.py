@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from api.db.database import get_db
-from api.utils.security import verify_password  # ✅ Import at top level
+from api.utils.security import verify_password
 from api.v1.models.user.user import User, UserAuthSession, UserActivityLog
 from api.utils.responses import auth_response
 from api.utils.login import create_access_token, create_refresh_token, get_device_info
@@ -32,7 +32,7 @@ def login_route(request: LoginRequest, db: Session = Depends(get_db), client: Re
         logger.info(f"User password_hash: {user.password_hash}")
         logger.info(f"Input password: {request.password}")
 
-        # ✅ Use the verify_password imported from top (NO local import)
+        
         password_match = verify_password(request.password, str(user.password_hash))
         logger.info(f"Password verification result: {password_match}")
         
