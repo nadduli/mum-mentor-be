@@ -4,7 +4,6 @@ import os
 
 from api.v1.schemas.user import (
     EmailVerificationRequest,
-    EmailVerificationResponse,
     ResendVerificationRequest
 )
 from api.v1.services.email_verification import EmailVerificationService
@@ -70,6 +69,7 @@ async def resend_verification(
     user = User.fetch_unique(db, email=request.email.lower())
     
     if not user:
+        # Return generic message for security
         return success_response(
             status_code=status.HTTP_200_OK,
             message="If the email exists, a verification link has been sent"
@@ -132,18 +132,22 @@ This verification link will expire in 24 hours.
 Thanks,
 The Nora Team"""
         
+        # Send email and check if it was successful
         await send_email(user.email, subject, body)
-        logger.info("Verification email resent to: %s", request.email)
+        
+        
+        logger.info("Verification email sent successfully to: %s", request.email)
+        
     except Exception as email_error:
         logger.error(
-            "Failed to resend verification email to %s: %s",
+            "Failed to send verification email to %s: %s",
             request.email,
             str(email_error),
             exc_info=True
         )
         return fail_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Failed to send verification email"
+            message="Failed to send verification email. Please try again later."
         )
     
     return success_response(

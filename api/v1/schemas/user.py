@@ -102,19 +102,23 @@ class EmailVerificationRequest(BaseModel):
     }
 
 
-class EmailVerificationResponse(BaseModel):
-    message: str
-    email_verified: bool
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(..., min_length=10, max_length=255, description="Email verification token")
+
+    @field_validator('token')
+    @classmethod
+    def validate_token(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError('Token cannot be empty')
+        return v.strip()
 
     model_config = {
         "json_schema_extra": {
             "example": {
-                "message": "Email verified successfully",
-                "email_verified": True
+                "token": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz"
             }
         }
     }
-
 
 class ResendVerificationRequest(BaseModel):
     email: EmailStr = Field(..., description="User's email address")
