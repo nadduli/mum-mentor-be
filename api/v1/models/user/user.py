@@ -35,6 +35,7 @@ class User(BaseModel):
     sessions = relationship("UserAuthSession", back_populates="user")
     otp_codes = relationship("UserOTPVerification", back_populates="user")
     activities = relationship("UserActivityLog", back_populates="user")
+    verification_tokens = relationship("EmailVerificationToken", back_populates="user")
 
 
 class UserProfile(BaseModel):
@@ -100,7 +101,7 @@ class UserAuthSession(BaseModel):
     user_agent: Mapped[str | None] = mapped_column(Text)
     ip_address: Mapped[str | None] = mapped_column(String(100))
 
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
 
@@ -119,7 +120,7 @@ class UserOTPVerification(BaseModel):
 
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     used: Mapped[bool] = mapped_column(Boolean, default=False)
-    used_at: Mapped[datetime | None] = mapped_column(DateTime)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3)
@@ -172,3 +173,17 @@ class UserActivityLog(BaseModel):
     activity_metadata: Mapped[dict | None] = mapped_column(JSON)
 
     user = relationship("User", back_populates="activities")
+
+
+class EmailVerificationToken(BaseModel):
+    __tablename__ = "email_verification_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+    token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user = relationship("User", back_populates="verification_tokens")

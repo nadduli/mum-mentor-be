@@ -126,8 +126,8 @@ def sample_user_data():
     return {
         "full_name": "Test User",
         "email": "test@example.com",
-        "phone": "+2348012345678",
-        "password": "SecurePass123!"
+        "password": "SecurePass123!",
+        "confirm_password": "SecurePass123!"
     }
 
 
