@@ -1,14 +1,11 @@
 from typing import Optional, Tuple
-
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 from api.v1.models.user.user import User
 from api.v1.schemas.user import UserRegistrationRequest
 from api.utils.security import hash_password
 from api.utils.logger import logger
-
 
 class UserService:
     """Service class for user-related operations"""
@@ -33,10 +30,7 @@ class UserService:
         try:
             # Check if user already exists using BaseModel fetch_unique
             # existing_user = User.fetch_unique(db, email=user_data.email.lower())
-            result = db.execute(
-                select(User).where(User.email == user_data.email.lower())
-            )
-            existing_user = result.scalar_one_or_none()
+            existing_user = User.fetch_unique(db, email=user_data.email.lower())
             
             if existing_user:
                 logger.warning(
@@ -55,9 +49,8 @@ class UserService:
                 phone_verified=False
             )
             
-            db.add(new_user)
-            db.commit()
-            db.refresh(new_user)
+             # Use BaseModel's insert method
+            new_user.insert(db)
             
             logger.info("User registered successfully: %s", new_user.email)
             return new_user, None
