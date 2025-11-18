@@ -9,7 +9,7 @@ from api.v1.models.user.user import User
 
 change_password_router = APIRouter(
     prefix="/auth",
-    tags=["Auth"]
+    tags=["Authentication"],
 )
 
 @change_password_router.patch("/change-password")
