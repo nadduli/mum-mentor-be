@@ -31,3 +31,5 @@ httpx==0.26.0
 
 # Email validation
 email-validator==2.1.0.post1
+PyJWT
+user-agents
