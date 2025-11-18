@@ -29,17 +29,17 @@ async def verify_otp(
     Verifies the OTP code and returns JWT tokens for authentication.
     After successful verification, the user is automatically logged in.
     """
-    logger.info("OTP verification attempt for user_id: %s", request_data.user_id)
+    #logger.info("OTP verification attempt for user_id: %s", request_data.user_id)
     
     # Verify OTP and get the user
     user, error = VerifyOTPService.verify_otp(db, request_data)
     
     if error:
-        logger.warning(
-            "OTP verification failed for user_id %s: %s",
-            request_data.user_id,
-            error
-        )
+        # logger.warning(
+        #     "OTP verification failed for user_id %s: %s",
+        #     request_data.user_id,
+        #     error
+        # )
         return fail_response(
             status_code=status.HTTP_400_BAD_REQUEST,
             message=error
