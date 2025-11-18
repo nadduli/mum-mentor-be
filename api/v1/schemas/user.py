@@ -19,7 +19,7 @@ class UserRegistrationRequest(BaseModel):
     """Schema for user registration request"""
     full_name: str = Field(..., min_length=2, max_length=100, description="User's full name")
     email: EmailStr = Field(..., description="User's email address")
-    phone: str | None = Field(None, max_length=20, description="User's phone number")
+    # phone: str | None = Field(None, max_length=20, description="User's phone number")
     password: str = Field(..., min_length=8, max_length=100, description="User's password")
     confirm_password: str = Field(..., min_length=8, max_length=100, description="Password confirmation")
 
@@ -56,7 +56,7 @@ class UserRegistrationRequest(BaseModel):
             "example": {
                 "full_name": "Lex Lee",
                 "email": "lex.lee@example.com",
-                "phone": "+2348012345678",
+                # "phone": "+2348012345678",
                 "password": "SecurePass123!",
                 "confirm_password": "SecurePass123!"
             }
@@ -69,7 +69,7 @@ class UserRegistrationResponse(BaseModel):
     id: str
     full_name: str
     email: str | None
-    phone: str | None
+    # phone: str | None
     email_verified: bool
     phone_verified: bool
     role: str
@@ -83,7 +83,7 @@ class UserRegistrationResponse(BaseModel):
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "full_name": "Lex Lee",
                 "email": "lex.lee@example.com",
-                "phone": "+2348012345678",
+                # "phone": "+2348012345678",
                 "email_verified": False,
                 "phone_verified": False,
                 "role": "user",

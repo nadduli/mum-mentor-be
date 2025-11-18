@@ -1,12 +1,12 @@
 from typing import Optional, Tuple
 
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from api.v1.models.user.user import User
 from api.v1.schemas.user import UserRegistrationRequest
-from api.utils.user.security import hash_password
+from api.utils.security import hash_password
 from api.utils.logger import logger
 
 
@@ -31,7 +31,8 @@ class UserService:
             Returns (None, error_message) on failure
         """
         try:
-            # Check if user already exists
+            # Check if user already exists using BaseModel fetch_unique
+            # existing_user = User.fetch_unique(db, email=user_data.email.lower())
             result = db.execute(
                 select(User).where(User.email == user_data.email.lower())
             )
@@ -46,9 +47,9 @@ class UserService:
             
             # Create new user
             new_user = User(
-                full_name=user_data.full_name,
+                full_name=user_data.full_name.strip(),
                 email=user_data.email.lower() if user_data.email else None,
-                phone=user_data.phone,
+                # phone=user_data.phone,
                 password_hash=hash_password(user_data.password),
                 email_verified=False,
                 phone_verified=False

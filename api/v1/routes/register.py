@@ -66,7 +66,7 @@ def register_user(
         id=str(user.id),
         full_name=user.full_name,
         email=user.email,
-        phone=user.phone,
+        # phone=user.phone,
         email_verified=user.email_verified,
         phone_verified=user.phone_verified,
         role=user.role,
