@@ -6,15 +6,10 @@ from api.v1.services.reset_password import reset_password_service
 from api.utils.responses import success_response
 from api.middleware import verify_token
 
-router = APIRouter()
+reset_router = APIRouter(prefix='/auth', tags=['Authentication'])
 
-
-@router.patch("/reset-password", status_code=status.HTTP_200_OK)
-async def reset_password(
-    request: ResetPassword,
-    db: Session = Depends(get_db),
-    user_id: str = Depends(verify_token)
-):
+@reset_router.patch("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(request: ResetPassword, db: Session = Depends(get_db)):
     """
     Reset user password endpoint
     
@@ -26,7 +21,7 @@ async def reset_password(
     Returns:
         Success response
     """
-    reset_password_service(db, request, user_id)
+    reset_password_service(db, request)
     
     return success_response(
         status_code=status.HTTP_200_OK,

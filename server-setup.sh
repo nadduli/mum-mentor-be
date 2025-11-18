@@ -12,7 +12,7 @@ echo "========================================="
 
 # Configuration
 APP_DIR="/var/www/mum-mentor-be"
-APP_USER="www-data"
+APP_USER="kaizen"
 VENV_DIR="$APP_DIR/venv"
 PYTHON_VERSION="3.12"
 

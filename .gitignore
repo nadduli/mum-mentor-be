@@ -57,3 +57,5 @@ venv/
 .pytest_cache
 .vscode
 .env
+api*__pycache__/
+*.pyc
