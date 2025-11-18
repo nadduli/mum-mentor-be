@@ -22,7 +22,6 @@ def reset_password_service(db: Session, data: ResetPassword):
         None
     """
     payload = verify_reset_password_token(token=data.token)
-    print(payload)
     if data.new_password != data.confirm_password:
         raise HTTPException(status_code=400, detail="New passwords do not match")
     
