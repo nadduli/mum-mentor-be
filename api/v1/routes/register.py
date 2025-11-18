@@ -1,17 +1,20 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+import os
 
 from api.v1.schemas.user import (
     UserRegistrationRequest,
     UserRegistrationResponse
 )
 from api.v1.services.user_service import UserService
+from api.v1.services.email_services import send_email
 from api.db.database import get_db
 from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 
 @router.post(
@@ -20,7 +23,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     summary="Register a new user",
     description="Create a new user account"
 )
-def register_user(
+async def register_user(
     user_data: UserRegistrationRequest,
     db: Session = Depends(get_db)
 ):
@@ -37,8 +40,7 @@ def register_user(
     """
     logger.info("Registration attempt for email: %s", user_data.email)
     
-    # Create user
-    user, error = UserService.create_user(db, user_data)
+    user, error, verification_token = await UserService.create_user(db, user_data)
     
     if error:
         logger.warning(
@@ -61,12 +63,33 @@ def register_user(
             message="Failed to create user"
         )
     
+    # Send verification email with plain text template
+    if verification_token and user.email:
+        verification_link = f"{FRONTEND_URL}/verify-email?token={verification_token}"
+        
+        subject = "Verify Your Email Address"
+        body = f"""Hi {user.full_name},
+
+We're so glad to have you here. You're one step closer to experiencing a calmer, more supported motherhood journey with Nora.
+
+Whether you're navigating pregnancy, caring for a newborn, or guiding a growing child — Nora is here with trusted answers, gentle guidance, and support whenever you need it.
+
+Tap the button below to confirm your email and complete your setup:
+
+{verification_link}
+
+This verification link will expire in 24 hours.
+
+Thanks,
+The Nora Team"""
+        
+        await send_email(user.email, subject, body)
+    
     # Prepare response data
     user_response = UserRegistrationResponse(
         id=str(user.id),
         full_name=user.full_name,
         email=user.email,
-        # phone=user.phone,
         email_verified=user.email_verified,
         phone_verified=user.phone_verified,
         role=user.role,
@@ -77,6 +100,6 @@ def register_user(
     logger.info("Registration successful for user: %s", user.email)
     return success_response(
         status_code=status.HTTP_201_CREATED,
-        message="User registered successfully.",
+        message="User registered successfully. Please check your email to verify your account.",
         data=user_response.model_dump()
     )
