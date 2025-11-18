@@ -20,8 +20,13 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 @router.post(
     "/register",
     status_code=status.HTTP_201_CREATED,
-    summary="Register a new user",
-    description="Create a new user account"
+    summary="Register New User",
+    response_description="User registration data",
+    responses={
+        201: {"description": "User successfully registered"},
+        400: {"description": "Invalid input or user already exists"},
+        500: {"description": "Internal server error"}
+    }
 )
 async def register_user(
     user_data: UserRegistrationRequest,
