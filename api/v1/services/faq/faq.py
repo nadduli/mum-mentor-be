@@ -1,7 +1,15 @@
+import logging
+
 from sqlalchemy import select, or_, func, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from api.v1.models.faq.faq import FAQ
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
 
 class FAQService:
 
@@ -13,6 +21,8 @@ class FAQService:
             limit: int,
             offset: int,
     ):
+        logger.info(f"Fetching FAQs | category={category} | search={search} | limit={limit} | offset={offset}")
+
         query = select(FAQ).where(FAQ.is_published.is_(True))
         count_query = select(func.count(FAQ.id)).where(FAQ.is_published.is_(True))
 
@@ -37,5 +47,7 @@ class FAQService:
         faqs = result.scalars().all()
 
         total = await session.scalar(count_query)
+
+        logger.info(f"Fetched {len(faqs)} FAQs (total: {total})")
 
         return faqs, total
