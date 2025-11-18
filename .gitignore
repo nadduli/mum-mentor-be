@@ -1,0 +1,61 @@
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Docker (project policy forbids uploading)
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+docker-compose.*
+.dockerignore
+.docker/
+
+work-env
+.venv
+
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+=======
+*/__pycache__
+*/__pycache__/*.pyc
+*.sqlite3__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+.idea
+.pytest_cache
+.vscode
+.env
+api*__pycache__/
+*.pyc
