@@ -9,7 +9,8 @@ import sys
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
 
-from api.db.database import Base, DATABASE_URL
+from api.db.base_model import Base
+from api.db.database import DATABASE_URL
 
 from api.v1.models.user.user import *
 # this is the Alembic Config object, which provides

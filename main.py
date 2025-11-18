@@ -13,7 +13,7 @@ app = FastAPI(
     title="Mum Mentor AI (NORA) API",
     description="Backend API for Mum Mentor AI - A digital companion for mothers",
     version="1.0.0",
-    docs_url="/api/docs",
+    docs_url="/docs",
     redoc_url="/api/redoc"
 )
 
@@ -29,6 +29,8 @@ app.add_middleware(
 # Include API v1 routers
 app.include_router(api_v1_router, prefix="/api/v1")
 
+
+app.include_router(api_v1_router, prefix="/api/v1")
 @app.get("/")
 async def read_root():
     return {
