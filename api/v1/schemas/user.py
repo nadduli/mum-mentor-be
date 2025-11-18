@@ -88,3 +88,41 @@ class UserRegistrationResponse(BaseModel):
             }
         }
     }
+
+
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(..., description="Email verification token")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "token": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz"
+            }
+        }
+    }
+
+
+class EmailVerificationResponse(BaseModel):
+    message: str
+    email_verified: bool
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "message": "Email verified successfully",
+                "email_verified": True
+            }
+        }
+    }
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr = Field(..., description="User's email address")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "email": "lex.lee@example.com"
+            }
+        }
+    }
