@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1.routes import app as api_v1_router
+from api.v1.routes import waitlist_router
+from api.v1.routes.faq.faq import router as faq_router
+
 import logging
 
 logging.basicConfig(
@@ -25,6 +28,8 @@ app.add_middleware(
 )
 
 app.include_router(api_v1_router, prefix="/api/v1")
+
+app.include_router(faq_router)
 
 @app.get("/")
 async def read_root():
