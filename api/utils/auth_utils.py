@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
+from fastapi import HTTPException
 import jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv
@@ -59,3 +60,10 @@ def get_device_info(user_agent_str):
         "is_pc": user_agent.is_pc,
         "is_bot": user_agent.is_bot
     }
+    
+def verify_reset_password_token(token: str) -> dict[str, str]:
+    try:
+      return jwt.decode(token, JWT_SECRET, ALGORITHM)
+    except Exception as e:
+      raise HTTPException(status_code=401, detail=str(e))
+    

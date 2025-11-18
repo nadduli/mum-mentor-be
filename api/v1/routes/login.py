@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from api.db.database import get_db
-from api.utils.security import verify_password  # ✅ Import at top level
+from api.utils.security import verify_password
 from api.v1.models.user.user import User, UserAuthSession, UserActivityLog
 from api.utils.responses import auth_response
 from api.utils.login import create_access_token, create_refresh_token, get_device_info
@@ -12,8 +12,37 @@ from api.utils.logger import logger
 login_router = APIRouter(prefix='/auth', tags=['Authentication'])
 
 
-@login_router.post('/login', status_code=status.HTTP_200_OK)
-def login_route(request: LoginRequest, db: Session = Depends(get_db), client: Request = None):
+@login_router.post(
+    "/login", 
+    status_code=status.HTTP_200_OK,
+    summary="User Login",
+    response_description="JWT tokens and user data",
+    responses={
+        200: {"description": "Successful login with tokens"},
+        401: {"description": "Invalid credentials"},
+        404: {"description": "User not found"},
+        500: {"description": "Internal server error"}
+    }
+)
+def login_route(request: LoginRequest, db: Session = Depends(get_db), 
+                client: Request = None):
+    """
+    Authenticate user and return JWT tokens for API access.
+    
+    - Verifies email/password against stored credentials
+    - Returns access_token (30min) and refresh_token (7days)
+    - Tracks login activity and device information
+    
+    Example request:
+    ```json
+    {
+        "email": "user@example.com", 
+        "password": "SecurePass123!"
+    }
+    ```
+    """
+
+    
     try:
         ip_address = client.client.host if client.client else None
         user_agent = client.headers.get("User-Agent")
@@ -26,13 +55,7 @@ def login_route(request: LoginRequest, db: Session = Depends(get_db), client: Re
             logger.warning(f"User not found or not active: {request.email}")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active user not found")
 
-        logger.info(f"User found: {user.email}")
-        logger.info(f"User is_active: {user.is_active}")
-        logger.info(f"User password_hash type: {type(user.password_hash)}")
-        logger.info(f"User password_hash: {user.password_hash}")
-        logger.info(f"Input password: {request.password}")
-
-        # ✅ Use the verify_password imported from top (NO local import)
+        
         password_match = verify_password(request.password, str(user.password_hash))
         logger.info(f"Password verification result: {password_match}")
         
