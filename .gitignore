@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # IDEs
 .vscode/
 .idea/
@@ -45,3 +46,16 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+=======
+*/__pycache__
+*/__pycache__/*.pyc
+*.sqlite3__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+.idea
+.pytest_cache
+.vscode
+>>>>>>> bdfab37 (fix: removed create_table.py and rename login_schema to login)
