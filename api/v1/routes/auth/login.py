@@ -3,9 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from api.db.database import get_db
+from api.utils import verify_password
 from api.v1.models.user.user import User, UserAuthSession, UserActivityLog
 from api.utils.responses import auth_response
-from api.utils.auth_utils import verify_password, create_access_token, create_refresh_token, get_device_info
+from api.utils.auth_utils import create_access_token, create_refresh_token, get_device_info
 from api.v1.schemas.login import LoginRequest
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ def login_route(request: LoginRequest, db: Session = Depends(get_db), client: Re
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active user not found")
 
-        if not verify_password(request.password, user.password_hash):
+        if not verify_password(request.password, str(user.password_hash)):
             log = UserActivityLog(
                 user_id=user.id,
                 activity_type="login",

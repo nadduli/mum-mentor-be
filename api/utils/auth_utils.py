@@ -45,10 +45,6 @@ def create_refresh_token(user_id, role):
     return token
 
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
 def get_device_info(user_agent_str):
     user_agent = parse(user_agent_str)
 

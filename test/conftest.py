@@ -14,7 +14,8 @@ os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 os.environ["TESTING"] = "true"
 
 from main import app
-from api.db.database import Base, get_db
+from api.db.base_model import Base
+from api.db.database import get_db
 
 # Setup test database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
