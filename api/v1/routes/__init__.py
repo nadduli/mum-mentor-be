@@ -5,8 +5,7 @@ from .change_password import change_password_router
 from .forgot_password import router as forgot_password_router
 from .login import login_router
 from .reset_password import reset_router as reset_password_router
-from .verify_otp import router as verify_otp_router 
-
+from .email_verification import router as email_verification_router
 app = APIRouter()
 app.include_router(auth_router)
 app.include_router(login_router)
