@@ -18,7 +18,6 @@ from api.db.database import get_db
 from api.db.base_model import Base
 from api.v1.models.user.user import User
 from api.utils.security import hash_password
-
 # Setup test database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(
