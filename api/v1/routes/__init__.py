@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from .waitlist import router as waitlist_router
 from .register import router as auth_router
-from .auth.forgot_password import router as forgot_password_router
+from .forgot_password import router as forgot_password_router
 from .login import login_router
 from .reset_password import reset_router as reset_password_router
 
