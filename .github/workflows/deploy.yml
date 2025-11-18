@@ -129,10 +129,10 @@ jobs:
             echo "✅ Deployment completed successfully!"
 
   deploy-staging:
-    name: Deploy to Staging (manual)
+    name: Deploy to Staging (paused)
     runs-on: ubuntu-latest
     needs: test
-    if: github.event_name == 'workflow_dispatch'
+    if: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
