@@ -10,11 +10,11 @@ echo "Mum Mentor API Deployment Script"
 echo "========================================="
 
 # Configuration
-# NOTE: service unit runs as `www-data` (see mum-mentor-api.service). Use the same
-# runtime user here so deploys do not change ownership to a different user and
-# prevent the service from reading files like `.env`.
+# NOTE: runtime user is `kaizen` per repo/server convention. Deploys will
+# preserve ownership for the service account so the process can read .env and
+# venv files.
 APP_DIR="/var/www/mum-mentor-be"
-APP_USER="www-data"
+APP_USER="kaizen"
 VENV_DIR="$APP_DIR/venv"
 SERVICE_NAME="mum-mentor-api"
 
