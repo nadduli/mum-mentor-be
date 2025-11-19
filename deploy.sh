@@ -10,6 +10,9 @@ echo "Mum Mentor API Deployment Script"
 echo "========================================="
 
 # Configuration
+# NOTE: runtime user is `kaizen` per repo/server convention. Deploys will
+# preserve ownership for the service account so the process can read .env and
+# venv files.
 APP_DIR="/var/www/mum-mentor-be"
 APP_USER="kaizen"
 VENV_DIR="$APP_DIR/venv"

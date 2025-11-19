@@ -11,6 +11,7 @@ on:
       - main
       - dev
       - staging
+  workflow_dispatch: {}
 
 jobs:
   test:
@@ -43,10 +44,10 @@ jobs:
           pytest -v || echo "No tests found yet"
 
   deploy:
-    name: Deploy to Production
+    name: Deploy to Production (manual)
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Deploy to Server
         uses: appleboy/ssh-action@v1.0.0
@@ -92,9 +93,35 @@ jobs:
             echo "Running database migrations..."
             alembic upgrade head
             
-            # Restart service
-            echo "Restarting service..."
-            sudo systemctl restart mum-mentor-api
+            # Check for systemd unit file in repo and update system unit if changed
+            UNIT_PATH="$APP_DIR/mum-mentor-api.service"
+            SYS_UNIT_PATH="/etc/systemd/system/mum-mentor-api.service"
+            SKIP_FINAL_RESTART=false
+
+            if [ -f "$UNIT_PATH" ]; then
+              echo "Unit file found in repo: $UNIT_PATH"
+              if [ ! -f "$SYS_UNIT_PATH" ] || ! cmp -s "$UNIT_PATH" "$SYS_UNIT_PATH"; then
+                echo "Updating systemd unit file..."
+                sudo cp "$UNIT_PATH" "$SYS_UNIT_PATH"
+                sudo chown root:root "$SYS_UNIT_PATH"
+                sudo chmod 644 "$SYS_UNIT_PATH"
+                echo "Reloading systemd daemon..."
+                sudo systemctl daemon-reload
+                echo "Restarting service to pick up new unit..."
+                sudo systemctl restart mum-mentor-api
+                SKIP_FINAL_RESTART=true
+              else
+                echo "Systemd unit unchanged."
+              fi
+            else
+              echo "No unit file in repo; skipping unit update."
+            fi
+
+            # Restart service if we didn't already restart after updating the unit
+            if [ "$SKIP_FINAL_RESTART" = "false" ]; then
+              echo "Restarting service..."
+              sudo systemctl restart mum-mentor-api
+            fi
             
             # Check status
             sudo systemctl status mum-mentor-api --no-pager
@@ -102,10 +129,10 @@ jobs:
             echo "✅ Deployment completed successfully!"
 
   deploy-staging:
-    name: Deploy to Staging
+    name: Deploy to Staging (paused)
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
+    if: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

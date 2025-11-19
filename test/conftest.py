@@ -104,8 +104,20 @@ def setup_test_environment():
     print("\n🧪 Setting up test environment...")
     yield
     print("\n🧹 Cleaning up test environment...")
-    if Path("./test.db").exists():
-        Path("./test.db").unlink()
+    # Dispose the SQLAlchemy engine to close open connections/pools
+    try:
+        engine.dispose()
+    except Exception:
+        pass
+
+    # Attempt to remove the SQLite file. If it's still in use, warn and skip.
+    try:
+        if Path("./test.db").exists():
+            Path("./test.db").unlink()
+    except PermissionError:
+        print("⚠️  Could not delete test.db; file is still in use by another process.")
+    except Exception as e:
+        print(f"⚠️  Error removing test.db: {e}")
 
 
 @pytest.fixture
@@ -114,8 +126,8 @@ def sample_user_data():
     return {
         "full_name": "Test User",
         "email": "test@example.com",
-        "phone": "+2348012345678",
-        "password": "SecurePass123!"
+        "password": "SecurePass123!",
+        "confirm_password": "SecurePass123!"
     }
 
 
