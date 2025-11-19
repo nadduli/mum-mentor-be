@@ -49,11 +49,11 @@ jobs:
           pytest -v || echo "No tests found yet"
 
   deploy:
-    name: Deploy to Staging (manual)
+    name: Deploy to Staging (auto)
     runs-on: self-hosted
     needs: test
     environment: staging
-    if: "${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'staging' }}"
+    if: (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/dev') && github.event_name == 'push'
     steps:
       - name: Deploy to staging server
         uses: appleboy/ssh-action@v1.0.0
@@ -130,7 +130,7 @@ jobs:
     environment: production
     # Production deploy is currently disabled until the production server is provisioned.
     # Re-enable by changing this condition to the workflow_dispatch check or removing it.
-    if: false
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1.0.0
