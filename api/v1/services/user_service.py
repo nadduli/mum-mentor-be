@@ -36,7 +36,7 @@ class UserService:
                     "Registration attempt with existing email: %s",
                     user_data.email,
                 )
-                return None, "User with this email already exists", None
+                return None, "Cannot register user", None
             
             new_user = User(
                 full_name=user_data.full_name.strip(),
@@ -63,7 +63,7 @@ class UserService:
                 "Database integrity error during registration for email: %s",
                 user_data.email,
             )
-            return None, "User with this email already exists", None
+            return None, "Cannot register user", None
         except Exception as e:
             db.rollback()
             logger.error(

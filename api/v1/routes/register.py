@@ -70,8 +70,6 @@ async def register_user(
     
     # Send verification email with plain text template
     if verification_token and user.email:
-        verification_link = f"{FRONTEND_URL}/verify-email?token={verification_token}"
-        
         subject = "Verify Your Email Address"
         body = f"""Hi {user.full_name},
 
@@ -81,9 +79,9 @@ Whether you're navigating pregnancy, caring for a newborn, or guiding a growing 
 
 Tap the button below to confirm your email and complete your setup:
 
-{verification_link}
+{verification_token}
 
-This verification link will expire in 24 hours.
+This verification code will expire in 24 hours.
 
 Thanks,
 The Nora Team"""
