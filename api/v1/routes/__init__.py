@@ -3,6 +3,7 @@ from .waitlist import router as waitlist_router
 from .downloads import router as downloads_router
 from .refresh_token import router as refresh_token_router
 from .register import router as auth_router
+from .google_auth import router as google_auth_router
 from .change_password import change_password_router
 from .forgot_password import router as forgot_password_router
 from .login import login_router
@@ -27,6 +28,8 @@ app.include_router(waitlist_router)
 app.include_router(refresh_token_router)
 
 app.include_router(reset_password_router)
+app.include_router(google_auth_router)
+app.include_router(change_password_router)
 app.include_router(delete_account_router)
 app.include_router(downloads_router)
 app.include_router(admin_router)
