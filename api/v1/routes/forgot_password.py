@@ -14,16 +14,32 @@ async def forgot_password(
     db: Session = Depends(get_db)
 ):
     """
-    Handle forgot password request.
     
-    Sends a password reset link to the user's email address.
+    Forgot Password (Step 1 of 3)
+
+    This is the first step in the password reset flow for users who are *logged out*.
+
+    ###  Step-by-Step Reset Process
+    1. *Forgot Password (this endpoint)*  
+    - User submits their email.  
+    - A password reset OTP/code is generated and sent to the user's email.
+
+    2. *Verify OTP*  
+    - User enters the OTP received in their email to confirm ownership.
+
+    3. *Reset Password*  
+    - After OTP verification, user submits a new password to complete the reset.
+
+    ### What This Endpoint Does
+    - Checks if the email belongs to a registered user.
+    - Generates a one-time OTP/reset code.
+    - Sends the OTP to the user's email address.
+
+    ### After Calling This Endpoint
+    The user should take the OTP they received and send it to the /auth/verify-otp endpoint to continue with Step 2.
+
+
     
-    Args:
-        request: ForgotPassword schema with email
-        db: Database session
-        
-    Returns:
-        Success response with confirmation message
     """
     result = await forgot_password_service(db, request.email)
     
