@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from api.db.database import get_db
+from api.utils.responses import fail_response, success_response
 
-from api.v1.services.faq.faq import FAQService
-from api.v1.schemas.faq import FAQListResponse
+from api.v1.services.faq import FAQService
+from api.v1.schemas.faq import FAQListResponse, FAQResponse
 from api.utils.logger import logger
 
 router = APIRouter(prefix="/faqs", tags=["FAQ"])
@@ -16,7 +17,7 @@ def get_faqs(
     offset: int = 0,
     session: Session = Depends(get_db),
 ):
-    faqs, total = FAQService.fetch_faqs(
+    faqs, error, total = FAQService.fetch_faqs(
         session=session,
         category=category,
         search=search,
@@ -24,11 +25,34 @@ def get_faqs(
         offset=offset,
     )
 
-    return FAQListResponse(
-        data=faqs,
+    if error:
+        logger.error("FAQ fetch failed: %s", error)
+        return fail_response(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message=error,
+        )
+
+    if faqs is None:
+        logger.error("FAQ fetch returned None without error")
+        return fail_response(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Unable to retrieve FAQs",
+        )
+
+    logger.info("FAQs retrieved successfully (%s items)", len(faqs))
+
+
+    response_data = FAQListResponse(
+        data=[FAQResponse.model_validate(f) for f in faqs],
         meta={
             "total": total,
             "limit": limit,
             "offset": offset,
-        },
+        }
+    )
+
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="FAQs retrieved successfully",
+        data=response_data.model_dump()
     )

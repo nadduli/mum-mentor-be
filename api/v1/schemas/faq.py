@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any
 import uuid
 from datetime import datetime
@@ -14,8 +14,7 @@ class FAQResponse(BaseModel):
     order_index: int
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class FAQListResponse(BaseModel):
     data: list[FAQResponse]
