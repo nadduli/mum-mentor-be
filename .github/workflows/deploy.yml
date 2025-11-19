@@ -57,10 +57,17 @@ jobs:
     environment: staging
     if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
     steps:
-      - name: Start ssh-agent and load key (staging)
-        uses: webfactory/ssh-agent@v0.8.1
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Start ssh-agent and add private key (staging)
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          # Start ssh agent and add the private key from the secret
+          eval "$(ssh-agent -s)"
+          echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+          ssh-add -l
 
       - name: Deploy to staging via SSH
         env:
