@@ -21,9 +21,7 @@ on:
 jobs:
   test:
     name: Run Tests
-    runs-on:
-      - self-hosted
-      - hng-13-runner
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,9 +50,7 @@ jobs:
 
   deploy:
     name: Deploy to Staging (manual)
-    runs-on:
-      - self-hosted
-      - hng-13-runner
+    runs-on: self-hosted
     needs: test
     environment: staging
     if: "${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'staging' }}"
@@ -129,9 +125,7 @@ jobs:
 
   deploy-production:
     name: Deploy to Production (manual)
-    runs-on:
-      - self-hosted
-      - hng-13-runner
+    runs-on: self-hosted
     needs: test
     environment: production
     # Production deploy is currently disabled until the production server is provisioned.
