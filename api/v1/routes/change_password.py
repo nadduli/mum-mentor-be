@@ -42,7 +42,7 @@ def change_password(
 
     """
 
-    # new password must match confirm password
+    #new password must match confirm password
     if request.new_password != request.confirm_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
