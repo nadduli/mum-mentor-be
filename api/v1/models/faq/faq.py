@@ -5,9 +5,9 @@ from sqlalchemy import String, Text, Integer, Boolean, func
 import uuid
 from datetime import datetime
 
-from api.db.database import Base
+from api.db.base_model import BaseModel
 
-class FAQ(Base):
+class FAQ(BaseModel):
     __tablename__ = "faqs"
 
     id: Mapped[uuid.UUID] = mapped_column(
