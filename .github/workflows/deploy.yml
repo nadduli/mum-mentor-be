@@ -11,7 +11,12 @@ on:
       - main
       - dev
       - staging
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Which environment to deploy (staging or production)'
+        required: true
+        default: 'staging'
 
 jobs:
   test:
@@ -44,12 +49,13 @@ jobs:
           pytest -v || echo "No tests found yet"
 
   deploy:
-    name: Deploy to Production (manual)
+    name: Deploy to Staging (manual)
     runs-on: ubuntu-latest
     needs: test
-    if: github.event_name == 'workflow_dispatch'
+    environment: staging
+    if: "${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'staging' }}"
     steps:
-      - name: Deploy to Server
+      - name: Deploy to staging server
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -57,110 +63,110 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             set -e
-            
-            APP_DIR="/var/www/mum-mentor-be"
-            REPO_URL="https://github.com/hngprojects/mum-mentor-be.git"
-            
-            # Navigate to app directory
-            cd "$APP_DIR"
-            
-            # Clone or update repository with force reset
-            if [ -d ".git" ]; then
-              echo "Repository exists, forcing update to match remote..."
-              git fetch origin
-              git reset --hard origin/dev
-              git clean -fd
-            else
-              echo "Initializing repository..."
-              git init
-              git remote add origin "$REPO_URL"
-              git fetch origin
-              git checkout -b dev origin/dev
-            fi
-            
-            # Create virtual environment if doesn't exist
-            if [ ! -d "venv" ]; then
-              echo "Creating virtual environment..."
-              python3 -m venv venv
-            fi
-            
-            # Activate venv and install dependencies
+
+            cd /var/www/mum-mentor-be-staging
+
+            # Force reset to match remote
+            git fetch origin
+            git reset --hard origin/staging
+            git clean -fd
+
+            # Activate venv and update
             . venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
-            
-            # Run database migrations
-            echo "Running database migrations..."
+
+            # Run migrations
             alembic upgrade head
-            
+
             # Check for systemd unit file in repo and update system unit if changed
-            UNIT_PATH="$APP_DIR/mum-mentor-api.service"
-            SYS_UNIT_PATH="/etc/systemd/system/mum-mentor-api.service"
+            APP_DIR_STAGING="/var/www/mum-mentor-be-staging"
+            # candidate unit file names in repo (prefer explicit staging unit if present)
+            UNIT_CAND1="$APP_DIR_STAGING/mum-mentor-api-staging.service"
+            UNIT_CAND2="$APP_DIR_STAGING/mum-mentor-api.service"
+            SYS_UNIT_PATH="/etc/systemd/system/mum-mentor-api-staging.service"
             SKIP_FINAL_RESTART=false
 
-            if [ -f "$UNIT_PATH" ]; then
+            if [ -f "$UNIT_CAND1" ]; then
+              UNIT_PATH="$UNIT_CAND1"
+            elif [ -f "$UNIT_CAND2" ]; then
+              UNIT_PATH="$UNIT_CAND2"
+            else
+              UNIT_PATH=""
+            fi
+
+            if [ -n "$UNIT_PATH" ]; then
               echo "Unit file found in repo: $UNIT_PATH"
               if [ ! -f "$SYS_UNIT_PATH" ] || ! cmp -s "$UNIT_PATH" "$SYS_UNIT_PATH"; then
-                echo "Updating systemd unit file..."
+                echo "Updating systemd unit file for staging..."
                 sudo cp "$UNIT_PATH" "$SYS_UNIT_PATH"
                 sudo chown root:root "$SYS_UNIT_PATH"
                 sudo chmod 644 "$SYS_UNIT_PATH"
                 echo "Reloading systemd daemon..."
                 sudo systemctl daemon-reload
-                echo "Restarting service to pick up new unit..."
-                sudo systemctl restart mum-mentor-api
+                echo "Restarting staging service to pick up new unit..."
+                sudo systemctl restart mum-mentor-api-staging
                 SKIP_FINAL_RESTART=true
               else
-                echo "Systemd unit unchanged."
+                echo "Systemd unit unchanged for staging."
               fi
             else
-              echo "No unit file in repo; skipping unit update."
+              echo "No unit file in repo for staging; skipping unit update."
             fi
 
             # Restart service if we didn't already restart after updating the unit
             if [ "$SKIP_FINAL_RESTART" = "false" ]; then
-              echo "Restarting service..."
-              sudo systemctl restart mum-mentor-api
+              sudo systemctl restart mum-mentor-api-staging
             fi
-            
-            # Check status
-            sudo systemctl status mum-mentor-api --no-pager
-            
-            echo "✅ Deployment completed successfully!"
 
-  deploy-staging:
-    name: Deploy to Staging (paused)
+            sudo systemctl status mum-mentor-api-staging --no-pager
+
+            echo "✅ Deployment to staging completed successfully!"
+
+  deploy-production:
+    name: Deploy to Production (manual)
     runs-on: ubuntu-latest
     needs: test
-    if: false
+    environment: production
+    if: "${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'production' }}"
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Deploy to staging server
+      - name: Deploy to production server
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.STAGING_SERVER_HOST }}
-          username: ${{ secrets.STAGING_SERVER_USER }}
-          password: ${{ secrets.STAGING_SERVER_PASSWORD }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             set -e
-            
-            cd /var/www/mum-mentor-be-staging
-            
-            # Force reset to match remote
+
+            cd /var/www/mum-mentor-be
+
+            # Force reset to match remote main
             git fetch origin
-            git reset --hard origin/staging
+            git reset --hard origin/main
             git clean -fd
-            
+
             # Activate venv and update
             . venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
-            
+
             # Run migrations
             alembic upgrade head
-            
+
+            # Check for systemd unit file in repo and update system unit if changed
+            UNIT_PATH="/var/www/mum-mentor-be/mum-mentor-api.service"
+            SYS_UNIT_PATH="/etc/systemd/system/mum-mentor-api.service"
+            if [ -f "$UNIT_PATH" ]; then
+              if [ ! -f "$SYS_UNIT_PATH" ] || ! cmp -s "$UNIT_PATH" "$SYS_UNIT_PATH"; then
+                sudo cp "$UNIT_PATH" "$SYS_UNIT_PATH"
+                sudo chown root:root "$SYS_UNIT_PATH"
+                sudo chmod 644 "$SYS_UNIT_PATH"
+                sudo systemctl daemon-reload
+                sudo systemctl restart mum-mentor-api
+              fi
+            fi
+
             # Restart service
-            sudo systemctl restart mum-mentor-api-staging
-            sudo systemctl status mum-mentor-api-staging --no-pager
+            sudo systemctl restart mum-mentor-api
+            sudo systemctl status mum-mentor-api --no-pager
