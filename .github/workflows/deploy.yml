@@ -92,6 +92,7 @@ jobs:
             pip install -r requirements.txt
 
             # Run migrations
+            alembic stamp 21c4c314e650
             alembic upgrade heads
 
             # Restart service
