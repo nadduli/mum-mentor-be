@@ -57,15 +57,24 @@ jobs:
     environment: staging
     if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
     steps:
-      - name: Deploy to staging server
-        uses: appleboy/ssh-action@v1.0.0
+      - name: Start ssh-agent and load key (staging)
+        uses: webfactory/ssh-agent@v0.8.1
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          script: |
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to staging via SSH
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          # Add server to known_hosts to avoid interactive prompt
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          ssh -o StrictHostKeyChecking=yes "$SERVER_USER@$SERVER_HOST" 'bash -s' <<'EOF'
             set -e
-            
             echo "Starting STAGING deployment..."
             cd /var/www/mum-mentor-be-staging
 
@@ -87,6 +96,7 @@ jobs:
             sudo systemctl status mum-mentor-api-staging --no-pager
 
             echo "✅ Staging deployment completed successfully!"
+          EOF
 
   deploy-production:
     name: Deploy to Production (Manual)
