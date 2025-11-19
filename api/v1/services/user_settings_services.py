@@ -7,34 +7,43 @@ from api.v1.schemas.user_settings import (
     AppSettingsUpdate,
     PasswordUpdate
 )
+from api.utils.security import hash_password, verify_password
+from api.utils.logger import logger
 from datetime import datetime, time as time_type
 from typing import Optional, Tuple
 import uuid
 
 
 def get_user_settings(db: Session, user_id: uuid.UUID) -> Optional[dict]:
-    user = db.query(User).filter(
-        User.id == user_id,
-        User.is_active == True,
-        User.is_deleted == False
-    ).first()
+    """Get user settings with all profile and app settings data"""
+    logger.info("Fetching settings for user_id: %s", user_id)
+    
+    user = User.fetch_one(
+        db,
+        id=user_id,
+        is_active=True,
+        is_deleted=False
+    )
     
     if not user:
+        logger.warning("User not found or inactive: %s", user_id)
         return None
     
+    # Create profile if it doesn't exist
     if not user.profile:
+        logger.info("Creating profile for user: %s", user_id)
         profile = UserProfile(user_id=user_id)
-        db.add(profile)
-        db.commit()
+        profile.insert(db)
         db.refresh(user)
     
+    # Create settings if they don't exist
     if not user.settings:
+        logger.info("Creating settings for user: %s", user_id)
         settings = UserSettings(
             user_id=user_id,
             daily_reminder_time=time_type(9, 0, 0)
         )
-        db.add(settings)
-        db.commit()
+        settings.insert(db)
         db.refresh(user)
     
     return {
@@ -72,39 +81,44 @@ def update_user_profile(
     db: Session,
     user_id: uuid.UUID,
     profile_data: UserProfileUpdate
-) -> Tuple[bool, Optional[str], Optional[dict]]:
-    user = db.query(User).filter(User.id == user_id).first()
+) -> Tuple[Optional[dict], Optional[str]]:
+    """Update user profile information"""
+    logger.info("Updating profile for user_id: %s", user_id)
+    
+    user = User.fetch_one(db, id=user_id)
     
     if not user:
-        return False, "User not found", None
+        logger.warning("User not found: %s", user_id)
+        return None, "User not found"
     
     try:
+        # Update user basic info
         if profile_data.full_name is not None:
             user.full_name = profile_data.full_name
         
         if profile_data.email is not None:
-            existing = db.query(User).filter(
-                User.email == profile_data.email,
-                User.id != user_id
-            ).first()
-            if existing:
-                return False, "Email already in use", None
+            existing = User.fetch_one(db, email=profile_data.email)
+            if existing and existing.id != user_id:
+                logger.warning("Email already in use: %s", profile_data.email)
+                return None, "Email already in use"
             user.email = profile_data.email
         
         if profile_data.phone is not None:
-            existing = db.query(User).filter(
-                User.phone == profile_data.phone,
-                User.id != user_id
-            ).first()
-            if existing:
-                return False, "Phone number already in use", None
+            existing = User.fetch_one(db, phone=profile_data.phone)
+            if existing and existing.id != user_id:
+                logger.warning("Phone already in use: %s", profile_data.phone)
+                return None, "Phone number already in use"
             user.phone = profile_data.phone
         
-        user.updated_at = datetime.utcnow()
+        user.update(db, commit=False)
         
+        # Create profile if it doesn't exist
         if not user.profile:
+            logger.info("Creating profile for user: %s", user_id)
             user.profile = UserProfile(user_id=user_id)
+            user.profile.insert(db, commit=False)
         
+        # Update profile fields
         if profile_data.date_of_birth is not None:
             user.profile.date_of_birth = profile_data.date_of_birth
         if profile_data.state is not None:
@@ -122,33 +136,40 @@ def update_user_profile(
         if profile_data.bio is not None:
             user.profile.bio = profile_data.bio
         
-        user.profile.updated_at = datetime.utcnow()
+        user.profile.update(db)
         
-        db.commit()
-        db.refresh(user)
-        
-        return True, None, get_user_settings(db, user_id)
+        logger.info("Profile updated successfully for user: %s", user_id)
+        return get_user_settings(db, user_id), None
         
     except IntegrityError as e:
         db.rollback()
-        return False, "Database integrity error", None
+        logger.error("Database integrity error updating profile: %s", str(e), exc_info=True)
+        return None, "Database integrity error"
     except Exception as e:
         db.rollback()
-        return False, f"Error updating profile: {str(e)}", None
+        logger.error("Error updating profile: %s", str(e), exc_info=True)
+        return None, f"Error updating profile: {str(e)}"
 
 
 def update_notification_preferences(
     db: Session,
     user_id: uuid.UUID,
     notification_data: NotificationPreferencesUpdate
-) -> Tuple[bool, Optional[str], Optional[dict]]:
-    user = db.query(User).filter(User.id == user_id).first()
+) -> Tuple[Optional[dict], Optional[str]]:
+    """Update user notification preferences"""
+    logger.info("Updating notification preferences for user_id: %s", user_id)
+    
+    user = User.fetch_one(db, id=user_id)
     
     if not user:
-        return False, "User not found", None
+        logger.warning("User not found: %s", user_id)
+        return None, "User not found"
     
+    # Create profile if it doesn't exist
     if not user.profile:
+        logger.info("Creating profile for user: %s", user_id)
         user.profile = UserProfile(user_id=user_id)
+        user.profile.insert(db, commit=False)
     
     try:
         if notification_data.push_notifications_enabled is not None:
@@ -158,30 +179,36 @@ def update_notification_preferences(
         if notification_data.sms_notifications_enabled is not None:
             user.profile.sms_notifications_enabled = notification_data.sms_notifications_enabled
         
-        user.profile.updated_at = datetime.utcnow()
+        user.profile.update(db)
         
-        db.commit()
-        db.refresh(user)
-        
-        return True, None, get_user_settings(db, user_id)
+        logger.info("Notification preferences updated successfully for user: %s", user_id)
+        return get_user_settings(db, user_id), None
         
     except Exception as e:
         db.rollback()
-        return False, f"Error updating notifications: {str(e)}", None
+        logger.error("Error updating notifications: %s", str(e), exc_info=True)
+        return None, f"Error updating notifications: {str(e)}"
 
 
 def update_app_settings(
     db: Session,
     user_id: uuid.UUID,
     settings_data: AppSettingsUpdate
-) -> Tuple[bool, Optional[str], Optional[dict]]:
-    user = db.query(User).filter(User.id == user_id).first()
+) -> Tuple[Optional[dict], Optional[str]]:
+    """Update user app settings"""
+    logger.info("Updating app settings for user_id: %s", user_id)
+    
+    user = User.fetch_one(db, id=user_id)
     
     if not user:
-        return False, "User not found", None
+        logger.warning("User not found: %s", user_id)
+        return None, "User not found"
     
+    # Create settings if they don't exist
     if not user.settings:
+        logger.info("Creating settings for user: %s", user_id)
         user.settings = UserSettings(user_id=user_id)
+        user.settings.insert(db, commit=False)
     
     try:
         if settings_data.dark_mode is not None:
@@ -197,16 +224,15 @@ def update_app_settings(
         if settings_data.community_visibility is not None:
             user.settings.community_visibility = settings_data.community_visibility
         
-        user.settings.updated_at = datetime.utcnow()
+        user.settings.update(db)
         
-        db.commit()
-        db.refresh(user)
-        
-        return True, None, get_user_settings(db, user_id)
+        logger.info("App settings updated successfully for user: %s", user_id)
+        return get_user_settings(db, user_id), None
         
     except Exception as e:
         db.rollback()
-        return False, f"Error updating settings: {str(e)}", None
+        logger.error("Error updating settings: %s", str(e), exc_info=True)
+        return None, f"Error updating settings: {str(e)}"
 
 
 def update_password(
@@ -214,29 +240,36 @@ def update_password(
     user_id: uuid.UUID,
     password_data: PasswordUpdate
 ) -> Tuple[bool, Optional[str]]:
-    """TODO: Integrate with auth team's password hashing utilities"""
-    user = db.query(User).filter(User.id == user_id).first()
+    """Update user password with proper security"""
+    logger.info("Password update request for user_id: %s", user_id)
+    
+    user = User.fetch_one(db, id=user_id)
     
     if not user:
+        logger.warning("User not found: %s", user_id)
         return False, "User not found"
     
     if not password_data.validate_passwords_match():
+        logger.warning("Password mismatch for user: %s", user_id)
         return False, "New password and confirmation do not match"
     
-    # TODO: Replace with real password verification from auth team
-    # Example: verify_password(password_data.current_password, user.password_hash)
-    # For now, skip current password verification in mock mode
+    # Verify current password
+    if not user.password_hash:
+        logger.warning("User has no password set: %s", user_id)
+        return False, "Current password is invalid"
     
-    # TODO: Replace with real password hashing from auth team
-    # Example: user.password_hash = hash_password(password_data.new_password)
-    # For now, store plain text (INSECURE - only for development)
-    user.password_hash = f"MOCK_HASH_{password_data.new_password}"
+    if not verify_password(password_data.current_password, user.password_hash):
+        logger.warning("Current password verification failed for user: %s", user_id)
+        return False, "Current password is incorrect"
     
-    user.updated_at = datetime.utcnow()
-    
+    # Hash and update new password
     try:
-        db.commit()
+        user.password_hash = hash_password(password_data.new_password)
+        user.update(db)
+        
+        logger.info("Password updated successfully for user: %s", user_id)
         return True, None
     except Exception as e:
         db.rollback()
+        logger.error("Error updating password: %s", str(e), exc_info=True)
         return False, f"Error updating password: {str(e)}"

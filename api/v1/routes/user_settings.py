@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from api.db.database import get_db
-from api.v1.dependencies.auth import get_current_user
+from api.utils.deps import get_current_user
 from api.v1.models.user.user import User
 from api.v1.schemas.user_settings import (
     UserSettingsResponse,
@@ -19,6 +19,7 @@ from api.v1.services.user_settings_services import (
     update_password
 )
 from api.utils.responses import success_response, fail_response
+from api.utils.logger import logger
 
 router = APIRouter(prefix="/user", tags=["User Settings"])
 
@@ -28,14 +29,19 @@ async def get_settings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Get user settings including profile, notifications, and app preferences"""
+    logger.info("Fetching settings for user: %s", current_user.email)
+    
     settings = get_user_settings(db, current_user.id)
     
     if not settings:
+        logger.warning("Settings not found for user: %s", current_user.id)
         return fail_response(
             status_code=status.HTTP_404_NOT_FOUND,
             message="User settings not found"
         )
     
+    logger.info("Settings retrieved successfully for user: %s", current_user.email)
     return success_response(
         status_code=status.HTTP_200_OK,
         message="Settings retrieved successfully",
@@ -49,44 +55,51 @@ async def update_settings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Update user settings (profile, notifications, and/or app settings)"""
+    logger.info("Updating settings for user: %s", current_user.email)
+    
     updated_data = None
     
     if settings_update.profile:
-        success, error, data = update_user_profile(
+        data, error = update_user_profile(
             db, current_user.id, settings_update.profile
         )
-        if not success:
+        if error:
+            logger.warning("Profile update failed for user %s: %s", current_user.email, error)
             return fail_response(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=error or "Failed to update profile"
+                message=error
             )
         updated_data = data
     
     if settings_update.notifications:
-        success, error, data = update_notification_preferences(
+        data, error = update_notification_preferences(
             db, current_user.id, settings_update.notifications
         )
-        if not success:
+        if error:
+            logger.warning("Notification update failed for user %s: %s", current_user.email, error)
             return fail_response(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=error or "Failed to update notification preferences"
+                message=error
             )
         updated_data = data
     
     if settings_update.app_settings:
-        success, error, data = update_app_settings(
+        data, error = update_app_settings(
             db, current_user.id, settings_update.app_settings
         )
-        if not success:
+        if error:
+            logger.warning("App settings update failed for user %s: %s", current_user.email, error)
             return fail_response(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message=error or "Failed to update app settings"
+                message=error
             )
         updated_data = data
     
     if not updated_data:
         updated_data = get_user_settings(db, current_user.id)
     
+    logger.info("Settings updated successfully for user: %s", current_user.email)
     return success_response(
         status_code=status.HTTP_200_OK,
         message="Settings updated successfully",
@@ -100,14 +113,19 @@ async def update_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    success, error, data = update_user_profile(db, current_user.id, profile_update)
+    """Update user profile information"""
+    logger.info("Updating profile for user: %s", current_user.email)
     
-    if not success:
+    data, error = update_user_profile(db, current_user.id, profile_update)
+    
+    if error:
+        logger.warning("Profile update failed for user %s: %s", current_user.email, error)
         return fail_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message=error or "Failed to update profile"
+            message=error
         )
     
+    logger.info("Profile updated successfully for user: %s", current_user.email)
     return success_response(
         status_code=status.HTTP_200_OK,
         message="Profile updated successfully",
@@ -121,16 +139,21 @@ async def update_notifications(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    success, error, data = update_notification_preferences(
+    """Update notification preferences"""
+    logger.info("Updating notification preferences for user: %s", current_user.email)
+    
+    data, error = update_notification_preferences(
         db, current_user.id, notification_update
     )
     
-    if not success:
+    if error:
+        logger.warning("Notification update failed for user %s: %s", current_user.email, error)
         return fail_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message=error or "Failed to update notification preferences"
+            message=error
         )
     
+    logger.info("Notification preferences updated successfully for user: %s", current_user.email)
     return success_response(
         status_code=status.HTTP_200_OK,
         message="Notification preferences updated successfully",
@@ -144,16 +167,21 @@ async def update_app_settings_route(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    success, error, data = update_app_settings(
+    """Update app settings"""
+    logger.info("Updating app settings for user: %s", current_user.email)
+    
+    data, error = update_app_settings(
         db, current_user.id, app_settings_update
     )
     
-    if not success:
+    if error:
+        logger.warning("App settings update failed for user %s: %s", current_user.email, error)
         return fail_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message=error or "Failed to update app settings"
+            message=error
         )
     
+    logger.info("App settings updated successfully for user: %s", current_user.email)
     return success_response(
         status_code=status.HTTP_200_OK,
         message="App settings updated successfully",
@@ -167,14 +195,19 @@ async def change_password(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Change user password"""
+    logger.info("Password change request for user: %s", current_user.email)
+    
     success, error = update_password(db, current_user.id, password_update)
     
     if not success:
+        logger.warning("Password change failed for user %s: %s", current_user.email, error)
         return fail_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message=error or "Failed to update password"
+            message=error
         )
     
+    logger.info("Password changed successfully for user: %s", current_user.email)
     return success_response(
         status_code=status.HTTP_200_OK,
         message="Password updated successfully",

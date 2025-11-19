@@ -12,9 +12,10 @@ import uuid
 from datetime import datetime, time
 
 from main import app
-from api.db.database import Base, get_db
+from api.db.database import get_db
+from api.db.base_model import Base
 from api.v1.models.user.user import User, UserProfile, UserSettings
-from api.v1.dependencies.auth import get_current_user
+from api.utils.deps import get_current_user
 
 
 # Setup test database
@@ -61,6 +62,8 @@ client = TestClient(app)
 @pytest.fixture(scope="function")
 def setup_test_user():
     """Create a test user before each test"""
+    from api.utils.security import hash_password
+    
     db = TestingSessionLocal()
     
     # Clean up any existing data
@@ -68,7 +71,7 @@ def setup_test_user():
     db.query(UserProfile).delete()
     db.query(User).delete()
     
-    # Create test user
+    # Create test user with properly hashed password
     user = User(
         id=TEST_USER_ID,
         full_name="Test User",
@@ -76,7 +79,7 @@ def setup_test_user():
         phone="+1234567890",
         is_active=True,
         is_deleted=False,
-        password_hash="mock_hash"
+        password_hash=hash_password("OldPass123")  # Hash the test password
     )
     db.add(user)
     
