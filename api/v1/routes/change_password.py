@@ -18,6 +18,30 @@ def change_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """
+    Change Password (Logged-in Users Only)
+
+    This endpoint allows an authenticated user to change their password while logged in.
+
+    ### How to Test This Endpoint in Swagger
+
+    1. *Login first* using the /auth/login endpoint.
+    2. Copy the *access_token* from the login response.
+    3. Click the *Authorize* button at the top of the Swagger page.
+    4. Select the authentication scheme and *paste ONLY the token*  
+        (Swagger automatically adds the Bearer prefix — do NOT type it yourself).
+    5. Now open /auth/change-password and click *Try it out*.
+
+    ### Example Request Body
+    json
+    {
+        "old_password": "OldPass123!",
+        "new_password": "NewPass456!",
+        "confirm_password": "NewPass456!"
+    }
+
+    """
+
     # new password must match confirm password
     if request.new_password != request.confirm_password:
         raise HTTPException(

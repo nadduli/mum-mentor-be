@@ -9,14 +9,20 @@ reset_router = APIRouter(prefix='/auth', tags=['Authentication'])
 @reset_router.patch("/reset-password", status_code=status.HTTP_200_OK)
 async def reset_password(request: ResetPassword, db: Session = Depends(get_db)):
     """
-    Reset user password endpoint
     
+    Reset User Password (Step 3 of 3)
+
+    Final step of the password reset flow.
+
+    This endpoint updates the user's password after their OTP has been verified.
+
     Args:
-        request: ResetPassword schema with old_password, new_password, confirm_password
-        db: Database session
-    
+        request: ResetPassword schema containing new_password and confirm_password.
+        db: Database session.
+
     Returns:
-        Success response
+        A success message confirming the password has been reset.
+
     """
     reset_password_service(db, request)
     

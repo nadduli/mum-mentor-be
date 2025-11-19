@@ -28,31 +28,15 @@ class VerifyOTPService:
             Returns (None, error_message) on failure
         """
         try:
-            # Convert user_id string to UUID
-            try:
-                user_uuid = uuid.UUID(data.user_id)
-            except ValueError:
-                return None, "Invalid user ID format"
-
+            otp_record = UserOTPVerification.fetch_one(db, otp_code=data.otp_code, otp_type=data.otp_type, used=False)
+            if not otp_record:
+                return None, "OTP record not found"
+            
             # Fetch user using BaseModel pattern
-            current_user = User.fetch_unique(db, id=user_uuid)
+            current_user = User.fetch_unique(db, id=otp_record.user_id)
             if not current_user:
                 return None, "User not found"
 
-            # Fetch latest matching unused OTP
-            otp_record = (
-                db.query(UserOTPVerification)
-                .filter(
-                    UserOTPVerification.user_id == current_user.id,
-                    UserOTPVerification.otp_type == data.otp_type,
-                    UserOTPVerification.used == False,
-                )
-                .order_by(UserOTPVerification.created_at.desc())
-                .first()
-            )
-
-            if not otp_record:
-                return None, "OTP record not found"
 
             now = datetime.now(timezone.utc)
 
@@ -105,7 +89,7 @@ class VerifyOTPService:
         except Exception as e:
             logger.error(
                 "Error during OTP verification for user_id %s: %s",
-                data.user_id,
+                data.otp_code,
                 str(e),
                 exc_info=True
             )
