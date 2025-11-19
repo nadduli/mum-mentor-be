@@ -17,7 +17,7 @@ def get_faqs(
     offset: int = 0,
     session: Session = Depends(get_db),
 ):
-    faqs, error, total = FAQService.fetch_faqs(
+    (faqs, total), error = FAQService.fetch_faqs(
         session=session,
         category=category,
         search=search,

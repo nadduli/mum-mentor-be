@@ -34,15 +34,11 @@ class FAQService:
                 offset=offset
             )
 
-            # Run queries
-            result = session.execute(query)
-            faqs = result.scalars().all()
-
-            total = session.scalar(count_query)
+            results = (faqs, total)
 
             logger.info("Fetched %s FAQs (total=%s)", len(faqs), total)
 
-            return faqs, None, total
+            return results, None
 
         except SQLAlchemyError as db_err:
             session.rollback()
