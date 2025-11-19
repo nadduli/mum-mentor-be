@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
 from api.db.database import get_db
 from api.utils.responses import fail_response, success_response
@@ -13,8 +13,8 @@ router = APIRouter(prefix="/faqs", tags=["FAQ"])
 def get_faqs(
     category: str | None = None,
     search: str | None = None,
-    limit: int = 20,
-    offset: int = 0,
+    limit: int = Query(20, ge=1),
+    offset: int = Query(0, ge=0),
     session: Session = Depends(get_db),
 ):
     (faqs, total), error = FAQService.fetch_faqs(
