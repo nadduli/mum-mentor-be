@@ -5,7 +5,7 @@ from sqlalchemy import select, or_, func, String
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from api.v1.models.faq.faq import FAQ
+from api.v1.models.user.user import FAQ
 from api.utils.logger import logger
 
 
@@ -20,7 +20,7 @@ class FAQService:
             search: Optional[str],
             limit: int,
             offset: int,
-    ) -> Tuple[Optional[List[FAQ]], Optional[str], Optional[int]]:
+    ):
         """
         Fetch FAQs with optional category and search filters.
 
