@@ -52,7 +52,10 @@ def test_track_download_anonymous():
     }
     resp = client.post("/api/v1/downloads/track", json=payload)
     assert resp.status_code == 201
-    data = resp.json()
+    body = resp.json()
+    assert body["status"] == "success"
+    assert body["status_code"] == 201
+    data = body["data"]
     assert data["download_type"] == "app"
     assert "id" in data
 
@@ -60,6 +63,6 @@ def test_track_download_anonymous():
 def test_download_stats():
     resp = client.get("/api/v1/downloads/stats")
     assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "success"
-    assert isinstance(data["data"], list)
+    body = resp.json()
+    assert body["status"] == "success"
+    assert isinstance(body["data"], list)

@@ -1,10 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from api.db.database import Base
+from api.db.base_model import BaseModel
 
-class DownloadEvent(Base):
+class DownloadEvent(BaseModel):
     __tablename__ = "download_events"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -25,6 +25,8 @@ class DownloadEvent(Base):
 
     extra_metadata: Mapped[dict | None] = mapped_column("metadata", JSON)
 
-    occurred_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
     user = relationship("User")
