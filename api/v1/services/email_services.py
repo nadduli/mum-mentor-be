@@ -3,6 +3,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
+from api.utils.logger import logger
 
 load_dotenv()
 
@@ -51,7 +52,7 @@ async def send_email(to_email: str, subject: str, body: str):
             
             await server.send_message(msg)
             
-        print(f"✅ Email sent successfully to {to_email}")
+        logger.info(f"Email successfully sent to: {to_email}")
     except Exception as e:
         import traceback
         traceback.print_exc()
