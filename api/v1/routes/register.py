@@ -77,7 +77,7 @@ We're so glad to have you here. You're one step closer to experiencing a calmer,
 
 Whether you're navigating pregnancy, caring for a newborn, or guiding a growing child — Nora is here with trusted answers, gentle guidance, and support whenever you need it.
 
-Please use the button below to confirm your email and complete your setup:
+Tap the button below to confirm your email and complete your setup:
 
 {verification_token}
 
