@@ -1,259 +1,167 @@
-from google.oauth2 import id_token
-from google.auth.transport import requests
-from datetime import datetime, timedelta
-from typing import Optional, Any
-from jose import JWTError, jwt
+# api/v1/services/google_auth.py
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, Depends
-from dotenv import load_dotenv
-import os
+from fastapi import HTTPException, status
+from datetime import datetime
 import uuid
-import secrets
-from api.v1.models.user.user import User, UserProfile, UserAuthSession
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import os
+from dotenv import load_dotenv
+from typing import Optional, Dict, Any
 
+from api.v1.models.user.user import User, UserProfile 
+from api.v1.schemas.google_auth_schema import GoogleVerificationResponse, UserResponse
+from api.utils.auth_utils import create_refresh_token
 from api.utils.logger import logger
-from api.db.database import get_db
-
+from api.utils.auth_utils import create_access_token
 load_dotenv()
-auth_scheme = HTTPBearer()
-
-
-
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-ACCESS_TOKEN_EXPIRE_MINUTES = float(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
-REFRESH_TOKEN_EXPIRE_DAYS = float(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7.0))
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(64))
-
-
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "407408718192.apps.googleusercontent.com")
 
 class GoogleAuthService:
+    """
+    Service that handles verifying Google ID tokens and mapping them to local users.
+    - Verifies token audience/issuer.
+    - Creates user if not present.
+    - Updates basic user info (email, name, picture, email_verified).
+    - Issues a local access token (no refresh tokens stored).
+    """
+
     def __init__(self):
-        self.google_client_id = "407408718192.apps.googleusercontent.com"
-        
-    async def verify_google_token(self, token: str) -> dict:
-        """Verify Google ID token and return user info"""
+        if not GOOGLE_CLIENT_ID:
+            logger.warning("GOOGLE_CLIENT_ID not set in environment")
+        self.google_client_id = GOOGLE_CLIENT_ID
+
+    def verify_google_token(self, token: str) -> GoogleVerificationResponse:
+        """
+        Verify Google ID token and return a typed response.
+        Raises HTTPException(401) on failure.
+        """
         try:
             logger.info("Verifying Google ID token")
-            idinfo = id_token.verify_oauth2_token(
-                token, 
-                requests.Request(), 
-                self.google_client_id
-            )
-            logger.info("Google ID token verified successfully")
-            if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-                raise ValueError('Wrong issuer.')
-            return {
-                'google_id': idinfo['sub'],
-                'email': idinfo['email'],
-                'full_name': idinfo.get('name'),
-                'picture': idinfo.get('picture'),
-                'email_verified': idinfo.get('email_verified', False)
-            }
-            
-        except Exception as e:
-            return {"error": str(e)}
-    
-    def get_or_create_user(self, db: Session, user_info: dict) -> User:
-        """Get existing user or create new one"""
+            idinfo = google_id_token.verify_oauth2_token(token, google_requests.Request(), self.google_client_id)
+        except Exception as exc:
+            logger.warning("Google token verification exception: %s", str(exc))
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google ID token")
 
-        google_id = user_info['google_id']
-        email = user_info.get('email')
-        logger.info("Fetching or creating user with Google ID: %s", google_id)
-        user = db.query(User).filter(User.google_id == user_info['google_id']).first()
-        logger.info("User fetched: %s", user)
+        # check issuer & audience
+        if idinfo.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+            logger.warning("Invalid issuer in id token: %s", idinfo.get("iss"))
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token issuer")
+
+        aud = idinfo.get("aud")
+        if aud != self.google_client_id:
+            logger.warning("Invalid audience in id token: %s (expected: %s)", aud, self.google_client_id)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token audience")
+
+        data = {
+            "google_id": idinfo.get("sub"),
+            "email": idinfo.get("email"),
+            "full_name": idinfo.get("name"),
+            "picture": idinfo.get("picture"),
+            "email_verified": bool(idinfo.get("email_verified", False)),
+        }
+        logger.info("Google ID token verified for google_id=%s email=%s", data["google_id"], data["email"])
+        return GoogleVerificationResponse(**data)
+
+    def get_or_create_user(self, db: Session, google_data: GoogleVerificationResponse) -> User:
+        """
+        Given verified google_data, fetch or create a local User record and update profile.
+        Returns the SQLAlchemy User instance.
+        """
+        # Try google_id first
+        user = None
+        if google_data.google_id:
+            user = db.query(User).filter(User.google_id == google_data.google_id).first()
+
+        # fallback to email
+        if not user and google_data.email:
+            user = db.query(User).filter(User.email == google_data.email).first()
+
         if not user:
-            logger.info("No existing user found, creating new user")
-            new_user = User(
+            logger.info("Creating new user from Google data: %s", google_data.email)
+            user = User(
                 id=uuid.uuid4(),
-                google_id=google_id,
-                email=email,
-                full_name=user_info.get("full_name"),
+                google_id=google_data.google_id,
+                email=google_data.email,
+                full_name=google_data.full_name or "",
                 password_hash=None,
                 is_active=True,
-                email_verified=user_info.get('email_verified', False),
+                email_verified=google_data.email_verified,
             )
-            logger.info("Creating new user with email: %s", email)
-            db.add(new_user)
+            db.add(user)
             db.flush()
-            logger.info("New user created with ID: %s", new_user.id)
+            # create profile
             try:
-                logger.info("Creating user profile for user ID: %s", new_user.id)
-                user_profile = UserProfile(
+                profile = UserProfile(
                     id=uuid.uuid4(),
-                    user_id=new_user.id,
+                    user_id=user.id,
                     preferred_language="en",
-                    avatar_url=user_info.get('picture'),
+                    avatar_url=google_data.picture,
                     timezone="Africa/Lagos",
                 )
-                logger.info("User profile created: %s", user_profile)
-                db.add(user_profile)
+                db.add(profile)
             except Exception as e:
-                logger.warning("Failed to create user profile: %s", str(e))
+                logger.warning("Could not create user profile: %s", str(e))
                 db.rollback()
-                raise e
-            logger.info("Committing new user to the database")
-            db.commit()
-            db.refresh(new_user)
-            user = new_user
-            logger.info("New user committed with ID: %s", user.id)
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create user profile")
 
-        logger.info("Updating user information if necessary for user ID: %s", user.id)
-        changed = False
-        if email and user.email != email:
-            logger.info("Updating email for user ID: %s", user.id)
-            user.email = email
-            changed = True
-            logger.info("Email updated to: %s", email)
-        if user.full_name != user_info.get('full_name'):
-            logger.info("Updating full name for user ID: %s", user.id)
-            user.full_name = user_info.get('full_name')
-            changed = True
-            logger.info("Full name updated to: %s", user.full_name)
-        if getattr(user, "google_id", None) != google_id:
-            logger.info("Updating Google ID for user ID: %s", user.id)
-            user.google_id = google_id
-            changed = True
-            logger.info("Google ID updated to: %s", google_id)
-        user_email_verified = user_info.get('email_verified', False)
-        if user.email_verified != user_email_verified:
-            logger.info("Updating email verified status for user ID: %s", user.id)
-            user.email_verified = user_email_verified
-            changed = True
-            logger.info("Email verified status updated to: %s", user_email_verified)
-
-        if changed:
-            logger.info("Committing updated user information for user ID: %s", user.id)
-            user.updated_at = datetime.utcnow()
             db.commit()
             db.refresh(user)
-            logger.info("User information updated for user ID: %s", user.id)
+            logger.info("New user created with id=%s", user.id)
+            return user
 
+        # update existing user fields if needed
+        changed = False
+        if google_data.email and user.email != google_data.email:
+            user.email = google_data.email
+            changed = True
+        if google_data.full_name and user.full_name != google_data.full_name:
+            user.full_name = google_data.full_name
+            changed = True
+        if getattr(user, "google_id", None) != google_data.google_id and google_data.google_id:
+            user.google_id = google_data.google_id
+            changed = True
+        if user.email_verified != google_data.email_verified:
+            user.email_verified = google_data.email_verified
+            changed = True
+
+        if changed:
+            user.updated_at = datetime.utcnow()
+            try:
+                db.commit()
+                db.refresh(user)
+            except Exception as e:
+                logger.warning("Failed to commit user updates: %s", str(e))
+                db.rollback()
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update user")
+
+        # update profile avatar if present
         try:
-            logger.info("Updating user profile information if necessary for user ID: %s", user.id)
             profile = getattr(user, "profile", None)
-            if profile and user_info.get('picture') and profile.avatar_url != user_info.get('picture'):
-                logger.info("Updating avatar URL for user ID: %s", user.id)
-                profile.avatar_url = user_info.get('picture')
+            if profile and google_data.picture and profile.avatar_url != google_data.picture:
+                profile.avatar_url = google_data.picture
                 profile.updated_at = datetime.utcnow()
                 db.commit()
-                logger.info("Avatar URL updated to: %s", profile.avatar_url)
-
         except Exception:
-            logger.warning("Failed to update user profile: %s", str(e))
             db.rollback()
-        
+
         return user
 
-    def _create_jwt(self, data: dict, expires_delta: timedelta, token_type: str) -> str:
-        """Create JWT token with expiration and type"""
-        to_encode = data.copy()
-        expire = datetime.utcnow() + expires_delta
-        to_encode.update({"exp": expire, "type": token_type})
-        
-        encoded_jwt = jwt.encode(
-            to_encode, 
-            SECRET_KEY, 
-            algorithm=ALGORITHM
-        )
-        return encoded_jwt
-    
-
-    def create_access_token(self, *, user:User) -> str:
-        """Create JWT access token"""
-        payload = {
-            "sub": str(user.id),
-            "email": user.email,
-            "role": getattr(user, "role", "user"),
-        }
-        
-        return self._create_jwt(
-            data=payload,
-            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-            token_type="access"
-        )
-    
-    def create_refresh_token(self, *, user: User, session_id: Optional[uuid.UUID] = None) -> str:
-        session_id = session_id or uuid.uuid4()
-        payload = {
-            "sub": str(user.id),
-            "sid": str(session_id),
-        }
-        return self._create_jwt(payload, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS), "refresh")
-
-    def create_session(self, db: Session, *, user: User, device_id: Optional[str] = None, device_name: Optional[str] = None, ip_address: Optional[str] = None, user_agent: Optional[str] = None, refresh_token_expires_days: int = 7) -> UserAuthSession:
+    def issue_local_access_token(self, user: User) -> str:
         """
-        Create and persist a refresh session record (UserAuthSession).
-        Returns the session object.
+        Issue your application's access token for the user.
+        Uses your existing auth_utils.create_access_token (unchanged).
         """
-        session_id = uuid.uuid4()
-        expires_at = datetime.utcnow() + timedelta(days=(refresh_token_expires_days or REFRESH_TOKEN_EXPIRE_DAYS))
-        session = UserAuthSession(
-            id=session_id,
-            user_id=user.id,
-            refresh_token=str(uuid.uuid4()),
-            device_id=device_id,
-            device_name=device_name,
-            user_agent=user_agent,
-            ip_address=ip_address,
-            expires_at=expires_at,
-            is_revoked=False,
-        )
-        db.add(session)
-        db.commit()
-        db.refresh(session)
-        return session
+        token = create_access_token(user_id=user.id, role=getattr(user, "role", "user"))
+        return token
     
-    def verify_token(self, token: str, refresh: bool | None) -> dict:
-        """Verify and decode JWT token"""
-        try:
-            payload = jwt.decode(
-                token, 
-                SECRET_KEY, 
-                algorithms=[ALGORITHM]
-            )
-            logger.info("Token verified successfully")
-            if refresh and payload.get("type") != "refresh":
-                raise JWTError("Invalid token type")
-            if payload.get("type") not in ["access", "refresh"]:
-                raise JWTError("Invalid token type")
-            logger.info("Token type is valid: %s", payload.get("type"))
-            return payload
+    def issue_local_refresh_token(self, user: User) -> str:
+        """
+        Issue your application's refresh token for the user.
+        Uses your existing auth_utils.create_refresh_token (unchanged).
+        """
+        
+        token = create_refresh_token(user_id=user.id, role=getattr(user, "role", "user"))
+        return token
 
-        except JWTError:
-            return {"error": "Could not validate credentials"}
-
-    def revoke_session(self, db: Session, session_id: str) -> bool:
-        logger.info("Revoking session with ID: %s", session_id)
-        session = db.query(UserAuthSession).filter(UserAuthSession.id == session_id).first()
-        if not session:
-            return False
-        session.is_revoked = True
-        session.revoked_at = datetime.utcnow()
-        logger.info("Session revoked at: %s", session.revoked_at)
-        db.commit()
-        return True
-    
-    def get_current_user(self, credentials: HTTPAuthorizationCredentials = Depends(auth_scheme), db: Session = Depends(get_db)) -> User:
-        """Get current user from JWT token"""
-        logger.info("Getting current user from token")
-        token = credentials.credentials
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        logger.info("Token decoded successfully")
-        user_id = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-        logger.info("Fetching user with ID: %s", user_id)
-        user = db.query(User).filter(User.id == user_id).first()
-        if user is None:
-            logger.warning("User not found for ID: %s", user_id)
-            raise HTTPException(status_code=401, detail="User not found")
-        return user
-    def get_user_by_id(self, db: Session, user_id: str) -> Optional[User]:
-        """Fetch user by ID"""
-        logger.info("Fetching user by ID: %s", user_id)
-        return db.query(User).filter(User.id == user_id).first()
-    
 google_auth_service = GoogleAuthService()
