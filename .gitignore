@@ -1,15 +1,33 @@
-# IDEs
+# IDEs / Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+# OS cruft
 .DS_Store
 Thumbs.db
 
-# Database
+# Python bytecode / caches
+__pycache__/
+*/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+.venv*/
+.venv312/
+work-env/
+
+# Environment files / secrets
+.env
+.env.*
+
+# Databases (local only)
 *.db
 *.sqlite
 *.sqlite3
@@ -22,17 +40,9 @@ logs/
 tmp/
 temp/
 
-# Docker (project policy forbids uploading)
-Dockerfile
-Dockerfile.*
-docker-compose.yml
-docker-compose.*
-.dockerignore
-.docker/
-
-work-env
-.venv
-
+# Test / Coverage
+.pytest_cache/
+.hypothesis/
 htmlcov/
 .tox/
 .nox/
@@ -43,19 +53,11 @@ nosetests.xml
 coverage.xml
 *.cover
 *.py,cover
-.hypothesis/
-.pytest_cache/
-=======
-*/__pycache__
-*/__pycache__/*.pyc
-*.sqlite3__pycache__/
-*.pyc
-*.pyo
-venv/
-.venv/
-.idea
-.pytest_cache
-.vscode
-.env
-api*__pycache__/
-*.pyc
+
+# Docker (policy: do not commit Docker artifacts)
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+docker-compose.*
+.dockerignore
+.docker/
