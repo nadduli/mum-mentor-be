@@ -6,7 +6,7 @@ from api.utils.deps import get_current_user
 
 router = APIRouter(
     prefix="/auth",
-    tags=["Auth"]
+    tags=["Authentication"]
 )
 
 @router.get("/profile")
@@ -14,7 +14,32 @@ def get_user_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Fetch profile (may be None)
+    """
+    Retrieve the authenticated user's profile information.
+
+    This endpoint returns the complete user account details along with their
+    associated profile data. It can only be accessed by a logged-in user.
+
+    *How it works:*
+    - The client must include a valid *Bearer access token* in the Authorization header.
+    - The token is decoded using get_current_user, which identifies the logged-in user.
+    - The endpoint then fetches both the user record and any additional profile information.
+
+    *How to test in Swagger:*
+    1. Click the *Authorize* button at the top of Swagger.
+    2. Paste your access token in this format:  
+       Bearer <your_token_here>
+    3. Execute the /auth/profile endpoint.
+
+    *Returns:*
+    A JSON object containing:
+    - Basic user information (name, email, role, etc.)
+    - Profile fields (bio, timezone, avatar, preferences, etc.)
+    - All missing/empty profile fields return null.
+
+    This endpoint is read-only and does not modify any data.
+    """
+    # Fetch profile 
     profile = (
         db.query(UserProfile)
         .filter(UserProfile.user_id == current_user.id)

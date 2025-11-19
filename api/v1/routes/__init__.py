@@ -9,6 +9,7 @@ from .reset_password import reset_router as reset_password_router
 from .email_verification import router as email_verification_router
 from .verify_otp import router as verify_otp_router
 from .delete_account import router as delete_account_router
+from .user_profile import router as user_profile_router
 
 
 app = APIRouter()
@@ -21,6 +22,8 @@ app.include_router(verify_otp_router)
 app.include_router(waitlist_router)
 app.include_router(reset_password_router)
 app.include_router(delete_account_router)
+app.include_router(user_profile_router)
+
 
 
 
