@@ -38,6 +38,12 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 
+@pytest.fixture(scope="function")
+def db(db_session):
+    """Alias for db_session for convenience."""
+    return db_session
+
+
 @pytest.fixture
 def test_user(db_session):
     """Create a test user with a hashed password."""
