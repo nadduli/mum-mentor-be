@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1.routes import app as api_v1_router
-from api.v1.routes import waitlist_router
-from api.v1.routes.faq.faq import router as faq_router
+from api.v1.routes.faq import router as faq_router
 
 import logging
 

@@ -1,10 +1,10 @@
 import pytest
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from unittest.mock import Mock, patch
 
-from api.v1.routes.faq.faq import router as faq_router
-from api.v1.services.faq.faq import FAQService
+from api.v1.routes.faq import router as faq_router
+from api.v1.services.faq import FAQService
 
 
 @pytest.fixture
