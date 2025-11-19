@@ -7,8 +7,8 @@ from main import app
 from unittest.mock import MagicMock
 from api.v1.models.user.user import User, UserAuthSession
 from api.db.database import get_db
-from api.v1.services.auth_service import generate_refresh_token, hash_token
-
+from api.utils.auth_utils import generate_refresh_token
+from api.v1.services.refresh_service import _hash_token
 client = TestClient(app)
 
 
@@ -34,7 +34,7 @@ def test_refresh_success(mock_db_session):
     session_obj = UserAuthSession(
         id=uuid.uuid4(),
         user_id=user.id,
-        refresh_token=hash_token(token),
+        refresh_token=_hash_token(token),
         expires_at=datetime.now(timezone.utc) + timedelta(days=1),
         is_revoked=False,
     )
@@ -68,7 +68,8 @@ def test_refresh_missing_header(mock_db_session):
     # No Authorization header should be rejected
     resp = client.post("/api/v1/auth/refresh")
     assert resp.status_code == 401
-
+    body = resp.json()
+    assert body["status"] == "failure"
 
 def test_refresh_null_header(mock_db_session):
     # Null/empty token in header -> invalid
@@ -82,7 +83,7 @@ def test_refresh_revoked_token(mock_db_session):
     session_obj = UserAuthSession(
         id=uuid.uuid4(),
         user_id=user.id,
-        refresh_token=hash_token(token),
+        refresh_token=_hash_token(token),
         expires_at=datetime.now(timezone.utc) + timedelta(days=1),
         is_revoked=True,
     )
@@ -102,7 +103,7 @@ def test_refresh_expired_token(mock_db_session):
     session_obj = UserAuthSession(
         id=uuid.uuid4(),
         user_id=user.id,
-        refresh_token=hash_token(token),
+        refresh_token=_hash_token(token),
         expires_at=datetime.now(timezone.utc) - timedelta(days=1),
         is_revoked=False,
     )
