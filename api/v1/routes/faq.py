@@ -4,6 +4,7 @@ from api.db.database import get_db
 
 from api.v1.services.faq.faq import FAQService
 from api.v1.schemas.faq import FAQListResponse
+from api.utils.logger import logger
 
 router = APIRouter(prefix="/faqs", tags=["FAQ"])
 

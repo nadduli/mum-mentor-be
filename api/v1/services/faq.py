@@ -3,13 +3,8 @@ import logging
 from sqlalchemy import select, or_, func, String
 from sqlalchemy.orm import Session
 from api.v1.models.faq.faq import FAQ
+from api.utils.logger import logger
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-
-logger = logging.getLogger(__name__)
 
 
 class FAQService:
