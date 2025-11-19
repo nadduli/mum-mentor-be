@@ -31,7 +31,7 @@ app.include_router(refresh_token_router)
 
 app.include_router(reset_password_router)
 app.include_router(google_auth_router)
-app.include_router(change_password_router)
+# app.include_router(change_password_router)
 app.include_router(delete_account_router)
 app.include_router(user_profile_router)
 
