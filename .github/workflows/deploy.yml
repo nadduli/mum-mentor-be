@@ -4,12 +4,10 @@ on:
   push:
     branches:
       - main
-      - dev
       - staging
   pull_request:
     branches:
       - main
-      - dev
       - staging
   workflow_dispatch:
     inputs:
@@ -17,6 +15,10 @@ on:
         description: 'Which environment to deploy (staging or production)'
         required: true
         default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
 
 jobs:
   test:
@@ -48,22 +50,35 @@ jobs:
           pip install pytest pytest-asyncio httpx
           pytest -v || echo "No tests found yet"
 
-  deploy:
-    name: Deploy to Staging (manual)
+  deploy-staging:
+    name: Deploy to Staging (Auto)
     runs-on: self-hosted
     needs: test
     environment: staging
-    if: "${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'staging' }}"
+    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
     steps:
-      - name: Deploy to staging server
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          script: |
-            set -e
+      - name: Deploy to staging (password-based)
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+          APP_DIR: /var/www/mum-mentor-be-staging
+        run: |
+          set -e
 
+          # Install sshpass (best-effort). Requires sudo on the runner.
+          sudo apt-get update || true
+          sudo apt-get install -y sshpass || true
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          # Add server to known_hosts to avoid interactive prompt
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # Connect using password and run deploy commands on the remote host
+          sshpass -p "$SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" 'bash -s' <<'EOF'
+            set -e
+            echo "Starting STAGING deployment..."
             cd /var/www/mum-mentor-be-staging
 
             # Force reset to match remote
@@ -79,58 +94,22 @@ jobs:
             # Run migrations
             alembic upgrade head
 
-            # Check for systemd unit file in repo and update system unit if changed
-            APP_DIR_STAGING="/var/www/mum-mentor-be-staging"
-            # candidate unit file names in repo (prefer explicit staging unit if present)
-            UNIT_CAND1="$APP_DIR_STAGING/mum-mentor-api-staging.service"
-            UNIT_CAND2="$APP_DIR_STAGING/mum-mentor-api.service"
-            SYS_UNIT_PATH="/etc/systemd/system/mum-mentor-api-staging.service"
-            SKIP_FINAL_RESTART=false
-
-            if [ -f "$UNIT_CAND1" ]; then
-              UNIT_PATH="$UNIT_CAND1"
-            elif [ -f "$UNIT_CAND2" ]; then
-              UNIT_PATH="$UNIT_CAND2"
-            else
-              UNIT_PATH=""
-            fi
-
-            if [ -n "$UNIT_PATH" ]; then
-              echo "Unit file found in repo: $UNIT_PATH"
-              if [ ! -f "$SYS_UNIT_PATH" ] || ! cmp -s "$UNIT_PATH" "$SYS_UNIT_PATH"; then
-                echo "Updating systemd unit file for staging..."
-                sudo cp "$UNIT_PATH" "$SYS_UNIT_PATH"
-                sudo chown root:root "$SYS_UNIT_PATH"
-                sudo chmod 644 "$SYS_UNIT_PATH"
-                echo "Reloading systemd daemon..."
-                sudo systemctl daemon-reload
-                echo "Restarting staging service to pick up new unit..."
-                sudo systemctl restart mum-mentor-api-staging
-                SKIP_FINAL_RESTART=true
-              else
-                echo "Systemd unit unchanged for staging."
-              fi
-            else
-              echo "No unit file in repo for staging; skipping unit update."
-            fi
-
-            # Restart service if we didn't already restart after updating the unit
-            if [ "$SKIP_FINAL_RESTART" = "false" ]; then
-              sudo systemctl restart mum-mentor-api-staging
-            fi
-
+            # Restart service
+            sudo systemctl restart mum-mentor-api-staging
             sudo systemctl status mum-mentor-api-staging --no-pager
 
-            echo "✅ Deployment to staging completed successfully!"
+            echo "✅ Staging deployment completed successfully!"
+          EOF
 
   deploy-production:
-    name: Deploy to Production (manual)
+    name: Deploy to Production (Manual)
     runs-on: self-hosted
     needs: test
+    # Only allow manual production deploys via workflow_dispatch and require
+    # the 'target' input be 'production'. Protect the production environment
+    # in GitHub (required reviewers) for extra safety.
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'production'
     environment: production
-    # Production deploy is currently disabled until the production server is provisioned.
-    # Re-enable by changing this condition to the workflow_dispatch check or removing it.
-    if: false
     steps:
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1.0.0
@@ -140,7 +119,8 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             set -e
-
+            
+            echo "Starting PRODUCTION deployment..."
             cd /var/www/mum-mentor-be
 
             # Force reset to match remote main
@@ -156,19 +136,9 @@ jobs:
             # Run migrations
             alembic upgrade head
 
-            # Check for systemd unit file in repo and update system unit if changed
-            UNIT_PATH="/var/www/mum-mentor-be/mum-mentor-api.service"
-            SYS_UNIT_PATH="/etc/systemd/system/mum-mentor-api.service"
-            if [ -f "$UNIT_PATH" ]; then
-              if [ ! -f "$SYS_UNIT_PATH" ] || ! cmp -s "$UNIT_PATH" "$SYS_UNIT_PATH"; then
-                sudo cp "$UNIT_PATH" "$SYS_UNIT_PATH"
-                sudo chown root:root "$SYS_UNIT_PATH"
-                sudo chmod 644 "$SYS_UNIT_PATH"
-                sudo systemctl daemon-reload
-                sudo systemctl restart mum-mentor-api
-              fi
-            fi
-
             # Restart service
             sudo systemctl restart mum-mentor-api
             sudo systemctl status mum-mentor-api --no-pager
+
+            echo "✅ Production deployment completed successfully!"
+
