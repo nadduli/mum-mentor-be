@@ -2,25 +2,33 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
-import sqlalchemy as sa
+from jwt import InvalidTokenError
 
 from api.db.database import get_db
 from api.utils.responses import auth_response, fail_response
-from api.v1.schemas.refresh_tokens import RefreshTokenRequest
 from api.v1.services.auth_service import (
-	create_access_token,
-	generate_refresh_token,
-	refresh_token_expiry,
+    create_access_token,
+    generate_refresh_token,
+    refresh_token_expiry,
+    verify_refresh_token,
+    hash_token,
 )
 from api.v1.models.user.user import UserAuthSession, UserActivityLog, User
 
 
-router = APIRouter()
+router = APIRouter(tags=['Authentication'])
 
 
-@router.post("/auth/refresh", tags=["auth"])
+@router.post("/auth/refresh",status_code=status.HTTP_200_OK,
+summary="Refresh Access Token",
+response_description="New access and refresh tokens",
+responses={
+200: {"description": "Access token refreshed successfully"},
+401: {"description": "Unauthorized"},
+403: {"description": "Device mismatch for refresh token"},
+500: {"description": "Internal server error"}
+})
 def refresh_access_token(
-    payload: RefreshTokenRequest,
     request: Request,
     db: Session = Depends(get_db)
 ):
@@ -36,10 +44,25 @@ def refresh_access_token(
     now = datetime.now(timezone.utc)
 
     try:
-        # Find session by refresh token
+        # Get token from Authorization header (Bearer <token>)
+        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return fail_response(status.HTTP_401_UNAUTHORIZED, "Missing Authorization header")
+
+        incoming_token = auth_header.split(" ", 1)[1].strip()
+
+        # Verify signature and expiry first
+        try:
+            verify_refresh_token(incoming_token)
+        except InvalidTokenError:
+            return fail_response(status.HTTP_401_UNAUTHORIZED, "Invalid or expired refresh token.")
+
+        # Hash token and look up stored session by hashed value
+        token_hash = hash_token(incoming_token)
+
         session = (
             db.query(UserAuthSession)
-            .filter(UserAuthSession.refresh_token == payload.refresh_token)
+            .filter(UserAuthSession.refresh_token == token_hash)
             .first()
         )
 
@@ -71,7 +94,8 @@ def refresh_access_token(
 
         # Rotate refresh token: generate a new one and extend expiry
         new_refresh = generate_refresh_token()
-        session.refresh_token = new_refresh
+        # store only hashed refresh token in DB
+        session.refresh_token = hash_token(new_refresh)
         session.expires_at = refresh_token_expiry()
         session.updated_at = now
 

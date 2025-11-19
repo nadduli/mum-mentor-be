@@ -3,6 +3,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 import jwt
+import hashlib
+import hmac
 
 
 # Configuration (can be overridden with environment variables)
@@ -65,3 +67,24 @@ def generate_refresh_token(subject: Any | None = None, extra_claims: Optional[di
 
 def refresh_token_expiry() -> datetime:
     return datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+
+
+def verify_refresh_token(token: str) -> dict:
+    """Verify and decode a signed refresh JWT. Raises jwt exceptions on failure."""
+    payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    return payload
+
+
+def hash_token(token: str) -> str:
+    """Return an HMAC-SHA256 hex digest of the token using the application secret.
+
+    This allows storing only a hash of the refresh token in the database while
+    still being able to verify token ownership by recomputing the HMAC and
+    comparing with a constant-time comparison.
+    """
+    if isinstance(JWT_SECRET, str):
+        key = JWT_SECRET.encode()
+    else:
+        key = JWT_SECRET
+    digest = hmac.new(key, token.encode(), hashlib.sha256).hexdigest()
+    return digest
