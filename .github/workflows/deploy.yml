@@ -92,7 +92,8 @@ jobs:
             pip install -r requirements.txt
 
             # Run migrations
-            alembic upgrade head
+            alembic stamp 21c4c314e650
+            alembic upgrade heads
 
             # Restart service
             sudo systemctl restart mum-mentor-api-staging
@@ -134,7 +135,7 @@ jobs:
             pip install -r requirements.txt
 
             # Run migrations
-            alembic upgrade head
+            alembic upgrade heads
 
             # Restart service
             sudo systemctl restart mum-mentor-api
