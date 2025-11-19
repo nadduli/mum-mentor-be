@@ -1,13 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+
 from api.db.database import get_db
-from api.v1.models.user.user import User, UserProfile
 from api.utils.deps import get_current_user
+from api.v1.models.user.user import User, UserProfile
+from api.utils.responses import success_response
+from api.utils.logger import logger
+
 
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
 )
+
 
 @router.get("/profile")
 def get_user_profile(
@@ -15,38 +20,31 @@ def get_user_profile(
     current_user: User = Depends(get_current_user)
 ):
     """
+   
     Retrieve the authenticated user's profile information.
 
     This endpoint returns the complete user account details along with their
     associated profile data. It can only be accessed by a logged-in user.
 
-    *How it works:*
-    - The client must include a valid *Bearer access token* in the Authorization header.
+    How it works:
+    - The client must include a valid Bearer access token in the Authorization header.
     - The token is decoded using get_current_user, which identifies the logged-in user.
     - The endpoint then fetches both the user record and any additional profile information.
 
-    *How to test in Swagger:*
-    1. Click the *Authorize* button at the top of Swagger.
+    How to test in Swagger:
+    1. Click the Authorize button at the top of Swagger.
     2. Paste your access token in this format:  
        Bearer <your_token_here>
     3. Execute the /auth/profile endpoint.
-
-    *Returns:*
-    A JSON object containing:
-    - Basic user information (name, email, role, etc.)
-    - Profile fields (bio, timezone, avatar, preferences, etc.)
-    - All missing/empty profile fields return null.
-
-    This endpoint is read-only and does not modify any data.
     """
-    # Fetch profile 
-    profile = (
-        db.query(UserProfile)
-        .filter(UserProfile.user_id == current_user.id)
-        .first()
-    )
 
-    return {
+    logger.info(f"Fetching profile for user_id={current_user.id}")
+
+    # Fetch extended profile using BaseModel CRUD instead of raw query
+    profile = UserProfile.fetch_one(db, user_id=current_user.id)
+
+    # Build response data
+    profile_data = {
         "id": str(current_user.id),
         "full_name": current_user.full_name,
         "email": current_user.email,
@@ -56,7 +54,6 @@ def get_user_profile(
         "role": current_user.role,
         "is_active": current_user.is_active,
         "last_login_at": current_user.last_login_at,
-
         "profile": {
             "date_of_birth": profile.date_of_birth if profile else None,
             "state": profile.state if profile else None,
@@ -74,5 +71,13 @@ def get_user_profile(
             "timezone": profile.timezone if profile else None,
             "avatar_url": profile.avatar_url if profile else None,
             "bio": profile.bio if profile else None,
-        }
+        },
     }
+
+    logger.info(f"Successfully fetched profile for user_id={current_user.id}")
+
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="User profile fetched successfully",
+        data=profile_data
+    )
