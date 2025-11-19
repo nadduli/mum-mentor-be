@@ -16,7 +16,13 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     "/verify-otp",
     status_code=status.HTTP_200_OK,
     summary="Verify OTP",
-    description="Verify OTP code and authenticate user"
+    description="""
+    (Step 2 of 3) of Resetting User Password 
+    Verify the OTP code sent to the user's email.
+
+    This step confirms the user's identity and allows them to proceed to the final
+    password reset stage. for the final stage use reset-password endpoint
+"""
 )
 async def verify_otp(
     request_data: VerifyOTPRequest,
@@ -76,12 +82,6 @@ async def verify_otp(
         data={
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "user": {
-                "id": str(user.id),
-                "email": user.email,
-                "full_name": user.full_name,
-                "email_verified": user.email_verified,
-                "phone_verified": user.phone_verified
-            }
+            "user_id": user.id,
         }
     )

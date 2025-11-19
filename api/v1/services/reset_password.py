@@ -22,11 +22,10 @@ def reset_password_service(db: Session, data: ResetPassword):
         None
     """
     payload = verify_reset_password_token(token=data.token)
-    
     if data.new_password != data.confirm_password:
         raise HTTPException(status_code=400, detail="New passwords do not match")
     
-    current_user = db.query(User).filter(User.id == payload["user_id"]).first()
+    current_user = db.query(User).filter(User.id == payload["user"]["user_id"]).first()
     
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
