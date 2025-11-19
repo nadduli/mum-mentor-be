@@ -4,12 +4,10 @@ on:
   push:
     branches:
       - main
-      - dev
       - staging
   pull_request:
     branches:
       - main
-      - dev
       - staging
   workflow_dispatch:
     inputs:
@@ -17,6 +15,10 @@ on:
         description: 'Which environment to deploy (staging or production)'
         required: true
         default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
 
 jobs:
   test:
@@ -48,12 +50,12 @@ jobs:
           pip install pytest pytest-asyncio httpx
           pytest -v || echo "No tests found yet"
 
-  deploy:
-    name: Deploy to Staging (manual)
+  deploy-staging:
+    name: Deploy to Staging (Auto)
     runs-on: self-hosted
     needs: test
     environment: staging
-    if: "${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'staging' }}"
+    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
     steps:
       - name: Deploy to staging server
         uses: appleboy/ssh-action@v1.0.0
@@ -63,7 +65,8 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             set -e
-
+            
+            echo "Starting STAGING deployment..."
             cd /var/www/mum-mentor-be-staging
 
             # Force reset to match remote
@@ -79,58 +82,18 @@ jobs:
             # Run migrations
             alembic upgrade head
 
-            # Check for systemd unit file in repo and update system unit if changed
-            APP_DIR_STAGING="/var/www/mum-mentor-be-staging"
-            # candidate unit file names in repo (prefer explicit staging unit if present)
-            UNIT_CAND1="$APP_DIR_STAGING/mum-mentor-api-staging.service"
-            UNIT_CAND2="$APP_DIR_STAGING/mum-mentor-api.service"
-            SYS_UNIT_PATH="/etc/systemd/system/mum-mentor-api-staging.service"
-            SKIP_FINAL_RESTART=false
-
-            if [ -f "$UNIT_CAND1" ]; then
-              UNIT_PATH="$UNIT_CAND1"
-            elif [ -f "$UNIT_CAND2" ]; then
-              UNIT_PATH="$UNIT_CAND2"
-            else
-              UNIT_PATH=""
-            fi
-
-            if [ -n "$UNIT_PATH" ]; then
-              echo "Unit file found in repo: $UNIT_PATH"
-              if [ ! -f "$SYS_UNIT_PATH" ] || ! cmp -s "$UNIT_PATH" "$SYS_UNIT_PATH"; then
-                echo "Updating systemd unit file for staging..."
-                sudo cp "$UNIT_PATH" "$SYS_UNIT_PATH"
-                sudo chown root:root "$SYS_UNIT_PATH"
-                sudo chmod 644 "$SYS_UNIT_PATH"
-                echo "Reloading systemd daemon..."
-                sudo systemctl daemon-reload
-                echo "Restarting staging service to pick up new unit..."
-                sudo systemctl restart mum-mentor-api-staging
-                SKIP_FINAL_RESTART=true
-              else
-                echo "Systemd unit unchanged for staging."
-              fi
-            else
-              echo "No unit file in repo for staging; skipping unit update."
-            fi
-
-            # Restart service if we didn't already restart after updating the unit
-            if [ "$SKIP_FINAL_RESTART" = "false" ]; then
-              sudo systemctl restart mum-mentor-api-staging
-            fi
-
+            # Restart service
+            sudo systemctl restart mum-mentor-api-staging
             sudo systemctl status mum-mentor-api-staging --no-pager
 
-            echo "✅ Deployment to staging completed successfully!"
+            echo "✅ Staging deployment completed successfully!"
 
   deploy-production:
-    name: Deploy to Production (manual)
+    name: Deploy to Production (Auto)
     runs-on: self-hosted
     needs: test
     environment: production
-    # Production deploy is currently disabled until the production server is provisioned.
-    # Re-enable by changing this condition to the workflow_dispatch check or removing it.
-    if: false
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1.0.0
@@ -140,7 +103,8 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             set -e
-
+            
+            echo "Starting PRODUCTION deployment..."
             cd /var/www/mum-mentor-be
 
             # Force reset to match remote main
@@ -156,19 +120,57 @@ jobs:
             # Run migrations
             alembic upgrade head
 
-            # Check for systemd unit file in repo and update system unit if changed
-            UNIT_PATH="/var/www/mum-mentor-be/mum-mentor-api.service"
-            SYS_UNIT_PATH="/etc/systemd/system/mum-mentor-api.service"
-            if [ -f "$UNIT_PATH" ]; then
-              if [ ! -f "$SYS_UNIT_PATH" ] || ! cmp -s "$UNIT_PATH" "$SYS_UNIT_PATH"; then
-                sudo cp "$UNIT_PATH" "$SYS_UNIT_PATH"
-                sudo chown root:root "$SYS_UNIT_PATH"
-                sudo chmod 644 "$SYS_UNIT_PATH"
-                sudo systemctl daemon-reload
-                sudo systemctl restart mum-mentor-api
-              fi
-            fi
-
             # Restart service
             sudo systemctl restart mum-mentor-api
             sudo systemctl status mum-mentor-api --no-pager
+
+            echo "✅ Production deployment completed successfully!"
+
+  deploy-manual:
+    name: Deploy (Manual Trigger)
+    runs-on: self-hosted
+    needs: test
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.target }}
+    steps:
+      - name: Deploy to selected environment
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            set -e
+            
+            TARGET="${{ github.event.inputs.target }}"
+            
+            if [ "$TARGET" = "staging" ]; then
+              echo "Manual deployment to STAGING..."
+              cd /var/www/mum-mentor-be-staging
+              BRANCH="staging"
+              SERVICE="mum-mentor-api-staging"
+            else
+              echo "Manual deployment to PRODUCTION..."
+              cd /var/www/mum-mentor-be
+              BRANCH="main"
+              SERVICE="mum-mentor-api"
+            fi
+
+            # Force reset to match remote
+            git fetch origin
+            git reset --hard origin/$BRANCH
+            git clean -fd
+
+            # Activate venv and update
+            . venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+
+            # Run migrations
+            alembic upgrade head
+
+            # Restart service
+            sudo systemctl restart $SERVICE
+            sudo systemctl status $SERVICE --no-pager
+
+            echo "✅ Manual deployment to $TARGET completed successfully!"
