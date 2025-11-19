@@ -23,16 +23,24 @@ def register_admin(
     """
     Register a new admin. Only callable by an authenticated super_admin.
     """
-    try:
-        _, meta = create_admin(db=db, admin_in=payload)
-        return success_response(
-            status_code=status.HTTP_201_CREATED,
-            message=meta.get("message", "Admin created"),
-            data={"admin": meta.get("user")}
-        )
-    except ValueError as e:
-        return fail_response(status_code=status.HTTP_400_BAD_REQUEST, message=str(e))
-    except Exception as e:
-        # Unexpected error
-        logger.exception("Unexpected error in register_admin")
-        return fail_response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message="Internal Server Error")
+    user, error = create_admin(db=db, admin_in=payload)
+    
+    if error:
+        logger.warning("Admin registration failed: %s", error)
+        return fail_response(status_code=status.HTTP_400_BAD_REQUEST, message=error)
+    
+    # Prepare safe user data (exclude password_hash)
+    admin_data = {
+        "id": str(user.id),
+        "full_name": user.full_name,
+        "email": user.email,
+        "phone": user.phone,
+        "role": user.role,
+        "is_active": user.is_active,
+    }
+    
+    return success_response(
+        status_code=status.HTTP_201_CREATED,
+        message="Admin account created successfully.",
+        data={"admin": admin_data}
+    )
