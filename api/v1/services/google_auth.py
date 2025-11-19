@@ -3,18 +3,23 @@ from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 import os
+import secrets
+import jwt
 from dotenv import load_dotenv
+from jose import JWTError
 from typing import Optional, Dict, Any
 
-from api.v1.models.user.user import User, UserProfile 
-from api.v1.schemas.google_auth_schema import GoogleVerificationResponse, UserResponse
-from api.utils.auth_utils import create_refresh_token
+from api.v1.models.user.user import User, UserProfile, UserAuthSession
+from api.v1.schemas.google_auth_schema import GoogleVerificationResponse, UserResponse, RefreshTokenRequest, RefreshTokenResponse
+from api.utils.auth_utils import create_access_token, verify_reset_password_token, create_refresh_token
 from api.utils.logger import logger
-from api.utils.auth_utils import create_access_token
 load_dotenv()
+
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(64))
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "407408718192.apps.googleusercontent.com")
 
 class GoogleAuthService:
@@ -146,22 +151,98 @@ class GoogleAuthService:
             db.rollback()
 
         return user
+    
+    def get_user_by_id(self, db: Session, user_id: str) -> Optional[User]:
+        """Fetch user by ID"""
+        logger.info("Fetching user by ID: %s", user_id)
+        return db.query(User).filter(User.id == user_id).first()
+    
 
-    def issue_local_access_token(self, user: User) -> str:
+    def create_session(self, db: Session, *, user: User, device_id: Optional[str] = None, device_name: Optional[str] = None, ip_address: Optional[str] = None, user_agent: Optional[str] = None, refresh_token_expires_days: int = 7) -> UserAuthSession:
+        """
+        Create and persist a refresh session record (UserAuthSession).
+        Returns the session object.
+        """
+        session_id = uuid.uuid4()
+        expires_at = datetime.utcnow() + timedelta(days=7.0)
+        session = UserAuthSession(
+            id=session_id,
+            user_id=user.id,
+            refresh_token=str(uuid.uuid4()),
+            device_id=device_id,
+            device_name=device_name,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            expires_at=expires_at,
+            is_revoked=False,
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        return session
+    
+
+    def revoke_session(self, db: Session, sid: str) -> bool:
+        logger.info("Revoking session with ID: %s", sid)
+        if not sid:
+            raise HTTPException(
+                status_code=400,
+                detail = "Token is invalid or not refresh token"
+            )
+        try:
+            session = db.query(UserAuthSession).filter(UserAuthSession.id == sid).first()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail = "Invalid session id"
+            )
+        if not session:
+            return False
+        session.is_revoked = True
+        session.revoked_at = datetime.utcnow()
+        logger.info("Session revoked at: %s", session.revoked_at)
+        db.commit()
+        return True
+
+    def issue_local_access_token(self, user: User, sid: str | None) -> str:
         """
         Issue your application's access token for the user.
         Uses your existing auth_utils.create_access_token (unchanged).
         """
-        token = create_access_token(user_id=user.id, role=getattr(user, "role", "user"))
+        token = create_access_token(user_id=user.id, sid = sid, role=getattr(user, "role", "user"))
         return token
     
-    def issue_local_refresh_token(self, user: User) -> str:
+    def issue_local_refresh_token(self, user: User, sid: str | None) -> str:
         """
         Issue your application's refresh token for the user.
         Uses your existing auth_utils.create_refresh_token (unchanged).
         """
         
-        token = create_refresh_token(user_id=user.id, role=getattr(user, "role", "user"))
+        token = create_refresh_token(user_id=user.id, sid=sid, role=getattr(user, "role", "user"))
         return token
+    
+    def verify_token(self, token: str, refresh: bool | None) -> dict:
+        """Verify and decode JWT token"""
+        try:
+            payload = jwt.decode(
+                token, 
+                SECRET_KEY, 
+                algorithms=[ALGORITHM]
+            )
+            logger.info("Token verified successfully")
+            logger.info(f"payload {payload}")
+            if payload.get("token_type") not in ["access", "refresh"]:
+                raise JWTError("Invalid token type")
+            
+            if refresh and payload.get("token_type") != "refresh":
+                raise JWTError("Invalid token type, expected refresh token")
+            
+            if not refresh and payload.get("token_type") != "access":
+                raise JWTError("Invalid token type, expected access")
+            
+            logger.info("Token type is valid: %s", payload.get("token_type"))
+            return payload.get("user")
 
+        except JWTError:
+            return {"error": "Could not validate credentials"}
 google_auth_service = GoogleAuthService()

@@ -13,10 +13,11 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 pwd_context = CryptContext(schemes="bcrypt", deprecated="auto")
 
-def create_access_token(user_id, role):
+def create_access_token(user_id, role, sid = None):
     user = {
         "user_id": str(user_id),
-        "role": role
+        "role": role,
+        "sid": str(sid)
     }
 
     payload = {
@@ -30,10 +31,11 @@ def create_access_token(user_id, role):
     return token
 
 
-def create_refresh_token(user_id, role):
+def create_refresh_token(user_id, role, sid = None):
     user = {
         "user_id": str(user_id),
-        "role": role
+        "role": role,
+        "sid": sid
     }
     payload = {
         "user": user,

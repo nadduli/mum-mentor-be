@@ -19,7 +19,15 @@ class GoogleAuthResponse(BaseModel):
     NOTE: refresh_token is intentionally omitted (we don't store refresh tokens).
     """
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
+
+class RefreshTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 
 class GoogleVerificationResponse(BaseModel):
@@ -38,3 +46,6 @@ class UserResponse(BaseModel):
     email_verified: bool
     google_id: Optional[str] = None
     role: Optional[str] = None
+
+class RevokeRequest(BaseModel):
+    refresh_token: str

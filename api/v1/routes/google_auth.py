@@ -2,9 +2,11 @@
 from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.orm import Session
 from api.db.database import get_db
+from datetime import datetime, timedelta
 from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
-from api.v1.schemas.google_auth_schema import GoogleAuthRequest, GoogleAuthResponse, UserResponse
+from api.v1.models.user.user import UserAuthSession
+from api.v1.schemas.google_auth_schema import GoogleAuthRequest, GoogleAuthResponse, UserResponse, RefreshTokenRequest, RefreshTokenResponse, RevokeRequest
 from api.v1.services.google_auth import google_auth_service
 from api.utils.deps import get_current_user
 from fastapi.security import HTTPAuthorizationCredentials
@@ -30,17 +32,27 @@ async def google_login(payload: GoogleAuthRequest, request: Request, db: Session
     # get or create user
     try:
         user = google_auth_service.get_or_create_user(db, google_data)
+        client_ip = request.client.host if request.client else None
+        user_agent = request.headers.get("User-Agent")
+        session = google_auth_service.create_session(
+            db,
+            user=user,
+            device_id=payload.device_id,
+            device_name=payload.device_name,
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
     except Exception as exc:
         logger.error("Failed to get or create user: %s", str(exc))
         return fail_response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message="Failed to create user")
 
     # optionally record session metadata (device_id, device_name, ip, user-agent) - skipped for refresh tokens
-    client_ip = request.client.host if request.client else None
-    user_agent = request.headers.get("User-Agent")
+    
 
     # issue local access token
     try:
-        access_token = google_auth_service.issue_local_access_token(user)
+        access_token = google_auth_service.issue_local_access_token(user, sid = str(session.id))
+        refresh_token = google_auth_service.issue_local_refresh_token(user, sid = str(session.id))
     except Exception as exc:
         logger.error("Failed to create local access token: %s", str(exc))
         return fail_response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message="Failed to create access token")
@@ -51,9 +63,56 @@ async def google_login(payload: GoogleAuthRequest, request: Request, db: Session
     return success_response(
         status_code=status.HTTP_200_OK,
         message="Google login successful",
-        data=GoogleAuthResponse(access_token=access_token).model_dump()
+        data=GoogleAuthResponse(access_token=access_token, refresh_token=refresh_token).model_dump()
     )
 
+
+@router.post(
+    "/refresh/",
+    response_model=GoogleAuthResponse,
+    status_code=status.HTTP_200_OK)
+async def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_db)):
+    """returns new access and refresh tokens given a valid refresh token
+    Args:
+        payload (RefreshRequest): takes in refresh token
+        db (Session, optional): Defaults to Depends(get_db).
+    """
+    payload_data = google_auth_service.verify_token(payload.refresh_token, refresh=True)
+    if not payload_data:
+        logger.warning("Invalid refresh token attempt")
+        return fail_response(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            message="Invalid refresh token"
+        )
+    sid = payload_data.get('sid')
+    user_id = payload_data.get("user_id")
+    session = db.query(UserAuthSession).filter(UserAuthSession.id == sid, UserAuthSession.is_revoked == False).first()
+    logger.info(f"Session {session}")
+    if not session or session.expires_at < datetime.utcnow():
+        return fail_response(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            message="Refresh token session is invalid or expired"
+        )
+    user = google_auth_service.get_user_by_id(db, user_id)
+    if not user:
+        return fail_response(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            message="User not found"
+        )
+    sid = str(session.id)
+    access_token = google_auth_service.issue_local_access_token(user=user, sid=sid)
+    refresh_token = google_auth_service.issue_local_refresh_token(
+        user=user, sid=sid
+    )
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="Token refreshed successfully",
+        data=GoogleAuthResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer"
+        ).model_dump()
+    )
 
 async def run_verify(token: str) -> GoogleVerificationResponse:
     """
@@ -84,10 +143,59 @@ def get_current_user_info(current_user=Depends(get_current_user)):  # wire to yo
     return success_response(status_code=status.HTTP_200_OK, message="User info retrieved", data=user_resp.model_dump())
 
 
-@router.get("/refresh-token", status_code=status.HTTP_200_OK)
-async def refresh_access_token(token: str):
+@router.post("/revoke", status_code=status.HTTP_200_OK)
+async def revoke(payload: RevokeRequest, db: Session = Depends(get_db)):
+    """Revoke a refresh token session
+    Args:
+        payload (RevokeRequest): takes in refresh token
+        db (Session, optional): Defaults to Depends(get_db).
     """
-    Endpoint to refresh access token using a refresh token.
-   """
+    payload_data = google_auth_service.verify_token(payload.refresh_token, refresh=True)
+    logger.info(f"payload_data: {payload_data}")
+    if not payload_data:
+        return fail_response(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            message="Invalid refresh token"
+        )
     
-    pass
+    sid = payload_data.get("sid")
+
+    success = google_auth_service.revoke_session(db, str(sid))
+    if not success:
+        return fail_response(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Failed to revoke session"
+        )
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="Session revoked successfully"
+    )
+
+
+# @router.post("/revoke-access", status_code=status.HTTP_200_OK)
+# async def revoke(payload: RevokeRequest, db: Session = Depends(get_db)):
+#     """Revoke a refresh token session
+#     Args:
+#         payload (RevokeRequest): takes in refresh token
+#         db (Session, optional): Defaults to Depends(get_db).
+#     """
+#     payload_data = google_auth_service.verify_token(payload.refresh_token, refresh=False)
+#     logger.info(f"payload_data: {payload_data}")
+#     if not payload_data:
+#         return fail_response(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             message="Invalid refresh token"
+#         )
+    
+#     sid = payload_data.get("sid")
+
+#     success = google_auth_service.revoke_session(db, str(sid))
+#     if not success:
+#         return fail_response(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             message="Failed to revoke session"
+#         )
+#     return success_response(
+#         status_code=status.HTTP_200_OK,
+#         message="Session revoked successfully"
+#     )
