@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from .waitlist import router as waitlist_router
 from .downloads import router as downloads_router
+from .refresh_token import router as refresh_token_router
 from .register import router as auth_router
 from .change_password import change_password_router
 from .forgot_password import router as forgot_password_router
@@ -13,6 +14,7 @@ from .admin import router as admin_router
 from .faq import router as faq_router
 
 
+
 app = APIRouter()
 app.include_router(auth_router)
 app.include_router(email_verification_router)
@@ -21,12 +23,14 @@ app.include_router(change_password_router)
 app.include_router(forgot_password_router)
 app.include_router(verify_otp_router)
 app.include_router(waitlist_router)
+
+app.include_router(refresh_token_router)
+
 app.include_router(reset_password_router)
 app.include_router(delete_account_router)
 app.include_router(downloads_router)
 app.include_router(admin_router)
 app.include_router(faq_router)
-
 
 
 
