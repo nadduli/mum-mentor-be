@@ -7,6 +7,9 @@ from pathlib import Path
 import sys
 import os
 
+import uuid
+from datetime import datetime
+
 root_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(root_dir))
 
@@ -16,7 +19,7 @@ os.environ["TESTING"] = "true"
 from main import app
 from api.db.database import get_db
 from api.db.base_model import Base
-from api.v1.models.user.user import User
+from api.v1.models.user.user import User, UserProfile
 from api.utils.security import hash_password
 # Setup test database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -142,3 +145,61 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "unit: marks tests as unit tests"
     )
+
+
+@pytest.fixture
+def mock_google_token():
+    """Sample Google ID token payload"""
+    return {
+        "iss": "accounts.google.com",
+        "sub": "123456789",
+        "email": "testuser@gmail.com",
+        "name": "Test User",
+        "picture": "https://example.com/photo.jpg",
+        "email_verified": True,
+        "aud": "407408718192.apps.googleusercontent.com",
+        "exp": 9999999999,
+        "iat": 1234567890
+    }
+
+
+@pytest.fixture
+def sample_user(db_session):
+    """Create a sample user in the database"""
+    user = User(
+        id=uuid.uuid4(),
+        google_id="123456789",
+        email="testuser@gmail.com",
+        full_name="Test User",
+        password_hash=None,
+        is_active=True,
+        email_verified=True,
+        role="user",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db_session.add(user)
+    
+    profile = UserProfile(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        preferred_language="en",
+        avatar_url="https://example.com/photo.jpg",
+        timezone="Africa/Lagos",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db_session.add(profile)
+    db_session.commit()
+    db_session.refresh(user)
+    
+    return user
+
+
+@pytest.fixture
+def auth_headers(sample_user):
+    """Generate valid auth headers with JWT token"""
+    from api.utils.auth_utils import create_access_token
+    
+    token = create_access_token(user_id=sample_user.id, role=sample_user.role)
+    return {"Authorization": f"Bearer {token}"}
