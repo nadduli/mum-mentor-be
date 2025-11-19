@@ -128,7 +128,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     environment: production
-    if: "${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'production' }}"
+    # Production deploy is currently disabled until the production server is provisioned.
+    # Re-enable by changing this condition to the workflow_dispatch check or removing it.
+    if: false
     steps:
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1.0.0
