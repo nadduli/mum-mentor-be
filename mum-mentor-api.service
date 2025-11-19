@@ -5,8 +5,8 @@ Wants=postgresql.service
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
+User=kaizen
+Group=kaizen
 WorkingDirectory=/var/www/mum-mentor-be
 Environment="PATH=/var/www/mum-mentor-be/venv/bin"
 EnvironmentFile=/var/www/mum-mentor-be/.env

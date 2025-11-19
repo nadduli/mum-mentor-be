@@ -19,7 +19,6 @@ class UserRegistrationRequest(BaseModel):
     """Schema for user registration request"""
     full_name: str = Field(..., min_length=2, max_length=100, description="User's full name")
     email: EmailStr = Field(..., description="User's email address")
-    # phone: str | None = Field(None, max_length=20, description="User's phone number")
     password: str = Field(..., min_length=8, max_length=100, description="User's password")
     confirm_password: str = Field(..., min_length=8, max_length=100, description="Password confirmation")
 
@@ -56,7 +55,6 @@ class UserRegistrationRequest(BaseModel):
             "example": {
                 "full_name": "Lex Lee",
                 "email": "lex.lee@example.com",
-                # "phone": "+2348012345678",
                 "password": "SecurePass123!",
                 "confirm_password": "SecurePass123!"
             }
@@ -69,7 +67,6 @@ class UserRegistrationResponse(BaseModel):
     id: str
     full_name: str
     email: str | None
-    # phone: str | None
     email_verified: bool
     phone_verified: bool
     role: str
@@ -83,12 +80,53 @@ class UserRegistrationResponse(BaseModel):
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "full_name": "Lex Lee",
                 "email": "lex.lee@example.com",
-                # "phone": "+2348012345678",
                 "email_verified": False,
                 "phone_verified": False,
                 "role": "user",
                 "is_active": True,
                 "created_at": "2025-11-16T12:00:00"
+            }
+        }
+    }
+
+
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(..., description="Email verification token")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "token": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz"
+            }
+        }
+    }
+
+
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(..., min_length=10, max_length=255, description="Email verification token")
+
+    @field_validator('token')
+    @classmethod
+    def validate_token(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError('Token cannot be empty')
+        return v.strip()
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "token": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz"
+            }
+        }
+    }
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr = Field(..., description="User's email address")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "email": "lex.lee@example.com"
             }
         }
     }
