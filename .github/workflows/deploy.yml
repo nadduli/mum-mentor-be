@@ -93,9 +93,6 @@ jobs:
             pip install --upgrade pip
             pip install -r requirements.txt
 
-            # Run migrations
-            alembic stamp 21c4c314e650
-            alembic upgrade heads
 
             # Restart service
             sudo systemctl restart mum-mentor-api-staging
@@ -149,9 +146,6 @@ jobs:
             . venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
-
-            # Run migrations
-            alembic upgrade heads
 
             # Restart service
             sudo systemctl restart mum-mentor-api
