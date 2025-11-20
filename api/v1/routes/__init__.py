@@ -18,6 +18,7 @@ from .faq import router as faq_router
 
 from .user_settings import router as user_settings_router
 from .edit_task import router as edit_task_router
+from .task import router as toggle_completion_router
 
 app = APIRouter()
 
@@ -35,9 +36,7 @@ app.include_router(google_auth_router)
 app.include_router(delete_account_router)
 
 app.include_router(edit_task_router)
-
-
-
+app.include_router(toggle_completion_router)
 
 # Backwards-compatibility: some modules (e.g. main.py) import `contact_router`.
 # Export the package-level router under that name so existing imports continue to work.
