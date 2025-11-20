@@ -15,8 +15,11 @@ from .delete_account import router as delete_account_router
 from .user_profile import router as user_profile_router
 from .admin import router as admin_router
 from .faq import router as faq_router
+from .task import router as task_router
+
 
 from .user_settings import router as user_settings_router
+from .edit_task import router as edit_task_router
 
 app = APIRouter()
 
@@ -32,6 +35,10 @@ app.include_router(reset_password_router)
 app.include_router(google_auth_router)
 # app.include_router(change_password_router)
 app.include_router(delete_account_router)
+app.include_router(task_router)
+
+
+app.include_router(edit_task_router)
 
 
 
