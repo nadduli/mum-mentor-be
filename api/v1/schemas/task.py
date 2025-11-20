@@ -2,6 +2,11 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from datetime import datetime
 
+class CreateTaskRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    due_date: datetime
+
 
 class EditTaskRequest(BaseModel):
     """Schema for editing a task"""

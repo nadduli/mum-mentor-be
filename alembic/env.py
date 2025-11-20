@@ -13,6 +13,7 @@ from api.db.base_model import Base
 from api.db.database import DATABASE_URL
 
 from api.v1.models.user.user import *
+from api.v1.models.task import *
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

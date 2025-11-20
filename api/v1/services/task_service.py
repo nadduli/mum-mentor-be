@@ -1,9 +1,44 @@
-from uuid import UUID
 from sqlalchemy.orm import Session
-from api.v1.models.task.task import Task
-from api.v1.schemas.task import EditTaskRequest
+from api.v1.models.task import Task
+from api.v1.models.user.user import User
 from api.utils.logger import logger
+from uuid import UUID
+from api.v1.schemas.task import EditTaskRequest
 from typing import Optional, Tuple
+# from fastapi import HTTPException
+
+
+
+
+def create_task(request, db: Session, current_user: User):
+    """Create a new task for the current user"""
+
+    try:
+        logger.info(f"Creating task for user {current_user.id}")
+        # existing_task = Task.fetch_one(db_session=db, name=request.name, user_id=current_user.id)
+
+        # if existing_task:
+        #     raise HTTPException(status_code=401, detail="User already created Taskname")
+
+
+        task = Task(
+            user_id=current_user.id,
+            name=request.name,
+            description=request.description,
+            due_date=request.due_date,
+            status="pending",
+            completed_at=None
+        )
+
+        task.insert(db)  # Using BaseModel CRUD
+
+        logger.info(f"Task created successfully for user {current_user.id}")
+
+        return task
+
+    except Exception as e:
+        logger.error(f"Error creating task for user {current_user.id}: {e}")
+        raise
 
 
 class TaskService:
