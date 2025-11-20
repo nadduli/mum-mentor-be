@@ -85,17 +85,17 @@ class TestEmailVerification:
         assert verification_token.used is True
         assert verification_token.used_at is not None
     
-    def test_verify_email_invalid_token(self, client, db_session):
+    def test_verify_email_invalid_token(self, client):
         response = client.post(
             "/api/v1/auth/verify-email",
-            json={"token": "invalid_token_12345"}
+            json={"token": "123456"}
         )
         
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "invalid" in response.json()["message"].lower()
     
     def test_verify_email_expired_token(self, client, db_session, test_user):
-        token = EmailVerificationService.generate_verification_token()
+        token = EmailVerificationService.generate_verification_otp()
         expired_time = datetime.now(timezone.utc) - timedelta(hours=25)
         
         verification_token = EmailVerificationToken(
@@ -212,12 +212,13 @@ class TestResendVerification:
 class TestEmailVerificationService:
     
     def test_generate_verification_token(self):
-        token1 = EmailVerificationService.generate_verification_token()
-        token2 = EmailVerificationService.generate_verification_token()
+        token1 = EmailVerificationService.generate_verification_otp()
+        token2 = EmailVerificationService.generate_verification_otp()
         
-        assert len(token1) > 20
-        assert len(token2) > 20
-        assert token1 != token2
+        assert len(token1) == 6
+        assert len(token2) == 6
+        assert token1.isdigit()
+        assert token2.isdigit()
     
     def test_create_verification_record(self, db_session, test_user):
         token, error = EmailVerificationService.create_verification_record(
