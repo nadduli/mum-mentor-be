@@ -20,6 +20,7 @@ from .task import router as task_router
 
 from .user_settings import router as user_settings_router
 from .edit_task import router as edit_task_router
+from .task import router as toggle_completion_router
 from .delete_task import router as delete_task_router
 
 app = APIRouter()
@@ -40,6 +41,7 @@ app.include_router(task_router)
 
 
 app.include_router(edit_task_router)
+app.include_router(toggle_completion_router)
 app.include_router(delete_task_router)
 
 
