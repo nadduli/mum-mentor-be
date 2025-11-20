@@ -22,6 +22,11 @@ class Task(BaseModel):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(1000))
 
+    due_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), 
         default=lambda: datetime.now(timezone.utc),
