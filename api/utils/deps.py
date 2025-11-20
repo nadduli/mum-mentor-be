@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from api.db.database import get_db
 from api.v1.models.user.user import User
 import os
+import uuid
 
-oauth2_scheme = HTTPBearer()
+oauth2_scheme = HTTPBearer(auto_error=False)
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
@@ -16,12 +17,16 @@ def get_current_user(
     credentials : HTTPAuthorizationCredentials = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    token = credentials.credentials
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    if credentials is None:
+        raise credentials_exception
+    
+    token = credentials.credentials
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -35,7 +40,13 @@ def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == user_id).first()
+    # Convert user_id string to UUID
+    try:
+        user_id_uuid = uuid.UUID(user_id)
+    except (ValueError, AttributeError):
+        raise credentials_exception
+
+    user = db.query(User).filter(User.id == user_id_uuid).first()
 
     if user is None:
         raise credentials_exception
@@ -52,7 +63,6 @@ def get_admin_user(
     Raises HTTPException with 403 Forbidden if user is not admin.
     Returns the admin user object.
     """
-    token = credentials.credentials
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -63,6 +73,11 @@ def get_admin_user(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Admin access required",
     )
+
+    if credentials is None:
+        raise credentials_exception
+    
+    token = credentials.credentials
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -82,7 +97,13 @@ def get_admin_user(
     except JWTError:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == user_id).first()
+    # Convert user_id string to UUID
+    try:
+        user_id_uuid = uuid.UUID(user_id)
+    except (ValueError, AttributeError):
+        raise credentials_exception
+
+    user = db.query(User).filter(User.id == user_id_uuid).first()
 
     if user is None:
         raise credentials_exception

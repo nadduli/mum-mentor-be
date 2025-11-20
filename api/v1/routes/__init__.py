@@ -22,6 +22,7 @@ from .user_settings import router as user_settings_router
 from .edit_task import router as edit_task_router
 from .task import router as toggle_completion_router
 from .delete_task import router as delete_task_router
+from .validate_token import router as validate_token_router
 
 app = APIRouter()
 
@@ -37,6 +38,7 @@ app.include_router(reset_password_router)
 app.include_router(google_auth_router)
 # app.include_router(change_password_router)
 app.include_router(delete_account_router)
+app.include_router(validate_token_router)
 app.include_router(task_router)
 
 
