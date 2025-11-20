@@ -13,6 +13,11 @@ class TaskStatusUpdate(BaseModel):
     """Schema for updating the completion status of a task."""
     completed: bool
 
+class CreateTaskRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    due_date: datetime
+
 
 class EditTaskRequest(BaseModel):
     """Schema for editing a task"""
