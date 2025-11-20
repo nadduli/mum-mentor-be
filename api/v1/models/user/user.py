@@ -36,6 +36,8 @@ class User(BaseModel):
     otp_codes = relationship("UserOTPVerification", back_populates="user")
     activities = relationship("UserActivityLog", back_populates="user")
     verification_tokens = relationship("EmailVerificationToken", back_populates="user")
+    tasks = relationship("Task", back_populates="user")
+
 
 
 class UserProfile(BaseModel):
