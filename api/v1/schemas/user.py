@@ -91,42 +91,67 @@ class UserRegistrationResponse(BaseModel):
 
 
 class EmailVerificationRequest(BaseModel):
-    token: str = Field(..., description="Email verification token")
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "token": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz"
-            }
-        }
-    }
-
-
-class EmailVerificationRequest(BaseModel):
-    token: str = Field(..., min_length=10, max_length=255, description="Email verification token")
+    """Schema for email verification request with 6-digit OTP"""
+    token: str = Field(..., min_length=6, max_length=6, description="6-digit email verification code")
 
     @field_validator('token')
     @classmethod
     def validate_token(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError('Token cannot be empty')
-        return v.strip()
+        """Validate verification code format"""
+        v = v.strip()
+        if not v:
+            raise ValueError('Verification code cannot be empty')
+        if not v.isdigit():
+            raise ValueError('Verification code must contain only digits')
+        if len(v) != 6:
+            raise ValueError('Verification code must be exactly 6 digits')
+        return v
 
     model_config = {
         "json_schema_extra": {
             "example": {
-                "token": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz"
+                "token": "123456"
             }
         }
     }
 
+
+class EmailVerificationResponse(BaseModel):
+    """Schema for email verification response"""
+    email_verified: bool
+    message: str = "Email verified successfully"
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "email_verified": True,
+                "message": "Email verified successfully"
+            }
+        }
+    }
+
+
 class ResendVerificationRequest(BaseModel):
-    email: EmailStr = Field(..., description="User's email address")
+    """Schema for resend verification request"""
+    email: EmailStr = Field(..., description="User's email address to resend verification code")
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "email": "lex.lee@example.com"
+            }
+        }
+    }
+
+
+class ResendVerificationResponse(BaseModel):
+    """Schema for resend verification response"""
+    message: str = "Verification code sent successfully"
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "message": "Verification code sent successfully"
             }
         }
     }
