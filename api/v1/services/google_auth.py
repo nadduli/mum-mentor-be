@@ -9,12 +9,13 @@ import os
 import secrets
 import jwt
 from dotenv import load_dotenv
+from fastapi.responses import JSONResponse
 from jose import JWTError
 from typing import Optional, Dict, Any
-
+from api.utils.responses import fail_response, success_response
 from api.v1.models.user.user import User, UserProfile, UserAuthSession
-from api.v1.schemas.google_auth_schema import GoogleVerificationResponse, UserResponse, RefreshTokenRequest, RefreshTokenResponse
-from api.utils.auth_utils import create_access_token, verify_reset_password_token, create_refresh_token
+from api.v1.schemas.google_auth_schema import GoogleVerificationResponse
+from api.utils.auth_utils import create_access_token, create_refresh_token
 from api.utils.logger import logger
 load_dotenv()
 
@@ -36,7 +37,7 @@ class GoogleAuthService:
             logger.warning("GOOGLE_CLIENT_ID not set in environment")
         self.google_client_id = GOOGLE_CLIENT_ID
 
-    def verify_google_token(self, token: str) -> GoogleVerificationResponse:
+    def verify_google_token(self, token: str) -> JSONResponse | dict:
         """
         Verify Google ID token and return a typed response.
         Raises HTTPException(401) on failure.
@@ -46,17 +47,17 @@ class GoogleAuthService:
             idinfo = google_id_token.verify_oauth2_token(token, google_requests.Request(), self.google_client_id)
         except Exception as exc:
             logger.warning("Google token verification exception: %s", str(exc))
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google ID token")
+            return fail_response(status_code=status.HTTP_401_UNAUTHORIZED, message="Invalid Google token")
 
         # check issuer & audience
         if idinfo.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
             logger.warning("Invalid issuer in id token: %s", idinfo.get("iss"))
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token issuer")
+            return fail_response(status_code=status.HTTP_401_UNAUTHORIZED, message="Invalid token issuer")
 
         aud = idinfo.get("aud")
         if aud != self.google_client_id:
             logger.warning("Invalid audience in id token: %s (expected: %s)", aud, self.google_client_id)
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token audience")
+            return fail_response(status_code=status.HTTP_401_UNAUTHORIZED, message="Invalid token audience")
 
         data = {
             "google_id": idinfo.get("sub"),
@@ -66,9 +67,9 @@ class GoogleAuthService:
             "email_verified": bool(idinfo.get("email_verified", False)),
         }
         logger.info("Google ID token verified for google_id=%s email=%s", data["google_id"], data["email"])
-        return GoogleVerificationResponse(**data)
+        return data
 
-    def get_or_create_user(self, db: Session, google_data: GoogleVerificationResponse) -> User:
+    def get_or_create_user(self, db: Session, google_data: GoogleVerificationResponse) -> User | JSONResponse:
         """
         Given verified google_data, fetch or create a local User record and update profile.
         Returns the SQLAlchemy User instance.
@@ -108,7 +109,7 @@ class GoogleAuthService:
             except Exception as e:
                 logger.warning("Could not create user profile: %s", str(e))
                 db.rollback()
-                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create user profile")
+                return fail_response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message="Failed to create user profile")
 
             db.commit()
             db.refresh(user)
@@ -138,7 +139,7 @@ class GoogleAuthService:
             except Exception as e:
                 logger.warning("Failed to commit user updates: %s", str(e))
                 db.rollback()
-                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update user")
+                return fail_response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message="Failed to update user")
 
         # update profile avatar if present
         try:
@@ -152,11 +153,14 @@ class GoogleAuthService:
 
         return user
     
-    def get_user_by_id(self, db: Session, user_id: str) -> Optional[User]:
+    def get_user_by_id(self, db: Session, user_id: str) -> Optional[User] | JSONResponse:
         """Fetch user by ID"""
         logger.info("Fetching user by ID: %s", user_id)
-        return db.query(User).filter(User.id == user_id).first()
-    
+        try:
+            return db.query(User).filter(User.id == user_id).first()
+        except Exception as e:
+            logger.error("Error fetching user by ID: %s", str(e))
+            return fail_response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message="Failed to fetch user")
 
     def create_session(self, db: Session, *, user: User, device_id: Optional[str] = None, device_name: Optional[str] = None, ip_address: Optional[str] = None, user_agent: Optional[str] = None, refresh_token_expires_days: int = 7) -> UserAuthSession:
         """
@@ -164,7 +168,7 @@ class GoogleAuthService:
         Returns the session object.
         """
         session_id = uuid.uuid4()
-        expires_at = datetime.utcnow() + timedelta(days=7.0)
+        expires_at = datetime.utcnow() + timedelta(days= refresh_token_expires_days)
         session = UserAuthSession(
             id=session_id,
             user_id=user.id,
@@ -185,10 +189,7 @@ class GoogleAuthService:
     def revoke_session(self, db: Session, sid: str) -> bool:
         logger.info("Revoking session with ID: %s", sid)
         if not sid:
-            raise HTTPException(
-                status_code=400,
-                detail = "Token is invalid or not refresh token"
-            )
+            return False
         try:
             session = db.query(UserAuthSession).filter(UserAuthSession.id == sid).first()
         except Exception:
@@ -221,7 +222,7 @@ class GoogleAuthService:
         token = create_refresh_token(user_id=user.id, sid=sid, role=getattr(user, "role", "user"))
         return token
     
-    def verify_token(self, token: str, refresh: bool | None) -> dict:
+    def verify_token(self, token: str, refresh: bool | None) -> dict | JSONResponse:
         """Verify and decode JWT token"""
         try:
             payload = jwt.decode(
@@ -232,17 +233,26 @@ class GoogleAuthService:
             logger.info("Token verified successfully")
             logger.info(f"payload {payload}")
             if payload.get("token_type") not in ["access", "refresh"]:
-                raise JWTError("Invalid token type")
+                return fail_response(status_code=status.HTTP_401_UNAUTHORIZED, message="Invalid token type")
             
             if refresh and payload.get("token_type") != "refresh":
-                raise JWTError("Invalid token type, expected refresh token")
+                return fail_response(status_code=status.HTTP_401_UNAUTHORIZED, message="Invalid token type, expected refresh")
             
             if not refresh and payload.get("token_type") != "access":
-                raise JWTError("Invalid token type, expected access")
+                return fail_response(status_code=status.HTTP_401_UNAUTHORIZED, message="Invalid token type, expected access")
             
             logger.info("Token type is valid: %s", payload.get("token_type"))
             return payload.get("user")
 
-        except JWTError:
-            return {"error": "Could not validate credentials"}
+        except Exception:
+            return fail_response(status_code=status.HTTP_401_UNAUTHORIZED, message="Invalid token")
+        
+async def run_verify(token: str) -> GoogleVerificationResponse | JSONResponse:
+    """
+    Helper to call the service verify method which is synchronous (keeps route clean).
+    """
+    # google_auth_service.verify_google_token is sync; we can call it directly (no await).
+    # But the route is async; call synchronously.
+    
+    return google_auth_service.verify_google_token(token)
 google_auth_service = GoogleAuthService()
