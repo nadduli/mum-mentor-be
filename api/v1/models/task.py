@@ -24,12 +24,13 @@ class Task(BaseModel):
 
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), 
-        default=lambda: datetime.now(timezone.utc)
+        default=lambda: datetime.now(timezone.utc),
+        nullable=True
     )
 
-    due_date: Mapped[datetime | None] = mapped_column(
+    due_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        nullable=True)
+        nullable=False)
     
     status: Mapped[str] = mapped_column(String(200), nullable=False, default="pending")
     
