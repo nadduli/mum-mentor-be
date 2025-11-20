@@ -101,3 +101,27 @@ class TaskService:
             db.rollback()
             logger.error(f"Error updating task: {str(e)}")
             return None, str(e)
+        
+
+    @staticmethod
+    def delete_task(db: Session, task: Task) -> bool:
+        """
+        Hard delete a task from the database.
+        
+        Args:
+            db: Database session
+            task: Task object to delete
+            
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        try:
+            db.delete(task)
+            db.commit()
+            logger.info(f"Task {task.id} deleted successfully")
+            return True
+            
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error deleting task {task.id}: {str(e)}")
+            return False
