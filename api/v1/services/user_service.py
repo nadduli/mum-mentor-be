@@ -32,12 +32,43 @@ class UserService:
             existing_user = User.fetch_unique(db, email=user_data.email.lower())
             
             if existing_user:
-                logger.warning(
-                    "Registration attempt with existing email: %s",
-                    user_data.email,
-                )
-                return None, "Cannot register user", None
+                # Allow re-registration if email is NOT verified
+                if not existing_user.email_verified:
+                    logger.info(
+                        "Re-registration for unverified email: %s",
+                        user_data.email,
+                    )
+                    
+                    # Update existing user with new data
+                    existing_user.full_name = user_data.full_name.strip()
+                    existing_user.password_hash = hash_password(user_data.password)
+                    existing_user.update(db)
+                    
+                    # Invalidate old verification tokens
+                    EmailVerificationService.invalidate_old_tokens(db, str(existing_user.id))
+                    
+                    # Generate new OTP
+                    verification_token_record, error = EmailVerificationService.create_verification_record(
+                        db, str(existing_user.id)
+                    )
+                    
+                    if error or not verification_token_record:
+                        logger.error("Failed to create verification token for: %s", user_data.email)
+                        return None, "Failed to generate verification code", None
+                    
+                    token = verification_token_record.token
+                    logger.info("User data updated and new verification code generated: %s", existing_user.email)
+                    return existing_user, None, token
+                
+                # Block registration if email IS verified
+                else:
+                    logger.warning(
+                        "Registration attempt with verified email: %s",
+                        user_data.email,
+                    )
+                    return None, "User already exists", None
             
+            # Create new user if email doesn't exist
             new_user = User(
                 full_name=user_data.full_name.strip(),
                 email=user_data.email.lower() if user_data.email else None,
@@ -63,7 +94,7 @@ class UserService:
                 "Database integrity error during registration for email: %s",
                 user_data.email,
             )
-            return None, "Cannot register user", None
+            return None, "User already exists", None
         except Exception as e:
             db.rollback()
             logger.error(
