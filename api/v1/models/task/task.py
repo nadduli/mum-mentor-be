@@ -26,6 +26,10 @@ class Task(BaseModel):
         DateTime(timezone=True), 
         default=lambda: datetime.now(timezone.utc)
     )
+
+    due_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True)
     
     status: Mapped[str] = mapped_column(String(200), nullable=False, default="pending")
     
