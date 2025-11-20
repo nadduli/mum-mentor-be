@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from api.v1.models.task.task import Task
+from api.v1.models.task import Task
 from api.v1.schemas.task import EditTaskRequest
 from api.utils.logger import logger
 from sqlalchemy.orm import Session
