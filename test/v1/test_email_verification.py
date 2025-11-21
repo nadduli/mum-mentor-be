@@ -96,7 +96,7 @@ class TestEmailVerification:
     
     def test_verify_email_expired_token(self, client, db_session, test_user):
         token = EmailVerificationService.generate_verification_otp()
-        expired_time = datetime.now(timezone.utc) - timedelta(hours=25)
+        expired_time = datetime.now(timezone.utc) - timedelta(minutes=15)
         
         verification_token = EmailVerificationToken(
             user_id=test_user.id,

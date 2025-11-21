@@ -80,7 +80,7 @@ Please use the verification code below to confirm your email and complete your s
 
 {verification_token}
 
-This verification code will expire in 24 hours.
+This verification code will expire in 10 minutes.
 
 Thanks,
 The Nora Team"""

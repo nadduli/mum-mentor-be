@@ -10,7 +10,7 @@ from api.utils.logger import logger
 
 class EmailVerificationService:
     
-    TOKEN_EXPIRY_HOURS = 24
+    TOKEN_EXPIRY_MINUTES = 10
     
     @staticmethod
     def generate_verification_otp() -> str:
@@ -27,7 +27,7 @@ class EmailVerificationService:
 
             otp = EmailVerificationService.generate_verification_otp()
             expires_at = datetime.now(timezone.utc) + timedelta(
-                hours=EmailVerificationService.TOKEN_EXPIRY_HOURS
+                minutes=EmailVerificationService.TOKEN_EXPIRY_MINUTES
             )
             
             verification_token = EmailVerificationToken(
