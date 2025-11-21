@@ -54,20 +54,26 @@ class UserService:
                     )
                     
                     if error or not verification_token_record:
+                        db.rollback()
                         logger.error("Failed to create verification token for: %s", user_data.email)
                         return None, "Failed to generate verification code", None
+                    
+                    # Commit all changes atomically
+                    db.commit()
+                    db.refresh(existing_user)
+                    db.refresh(verification_token_record)
                     
                     token = verification_token_record.token
                     logger.info("User data updated and new verification code generated: %s", existing_user.email)
                     return existing_user, None, token
                 
-                # Block registration if email IS verified
+                # Block registration if email IS verified - Return 409 status code
                 else:
                     logger.warning(
                         "Registration attempt with verified email: %s",
                         user_data.email,
                     )
-                    return None, "User already exists", None
+                    return None, "Email already registered. Please login or reset your password if you forgot it.", None
             
             # Create new user if email doesn't exist
             new_user = User(

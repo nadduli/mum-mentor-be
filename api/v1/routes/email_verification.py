@@ -118,11 +118,16 @@ async def resend_verification(
     )
     
     if error or not verification_token:
+        db.rollback()
         logger.error("Failed to create verification token for: %s", request.email)
         return fail_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to generate verification token"
         )
+    
+    # Commit all changes atomically
+    db.commit()
+    db.refresh(verification_token)
     
     if not user.email:
         logger.error("User has no email address: %s", str(user.id))

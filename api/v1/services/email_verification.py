@@ -45,7 +45,6 @@ class EmailVerificationService:
         except ValueError:
             return None, "Invalid user ID format"
         except Exception as e:
-            db.rollback()
             logger.error(
                 "Error creating verification code for user %s: %s",
                 user_id,
@@ -86,13 +85,18 @@ class EmailVerificationService:
             if user.email_verified:
                 return None, "Email is already verified"
             
-            # Update using BaseModel pattern
+            # Update user and verification record
             user.email_verified = True
-            user.update(db)
+            user.updated_at = datetime.now(timezone.utc)
             
             verification_record.used = True
             verification_record.used_at = datetime.now(timezone.utc)
-            verification_record.update(db)
+            verification_record.updated_at = datetime.now(timezone.utc)
+            
+            # Commit both updates atomically
+            db.commit()
+            db.refresh(user)
+            db.refresh(verification_record)
             
             logger.info("Email verified successfully for user: %s", user.email)
             return user, None
