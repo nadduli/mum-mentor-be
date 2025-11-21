@@ -111,7 +111,17 @@ class EmailVerificationService:
             return None, "An error occurred during email verification"
     
     @staticmethod
-    def invalidate_old_tokens(db: Session, user_id: str) -> None:
+    def invalidate_old_tokens(db: Session, user_id: str) -> Tuple[bool, Optional[str]]:
+        """
+        Invalidate all unused verification tokens for a user.
+        
+        Args:
+            db: Database session
+            user_id: User ID as string
+            
+        Returns:
+            Tuple of (success: bool, error_message: Optional[str])
+        """
         try:
             user_uuid = uuid.UUID(user_id)
             
@@ -127,9 +137,11 @@ class EmailVerificationService:
                 token.updated_at = datetime.now(timezone.utc)
             
             logger.info("Invalidated old tokens for user: %s", user_id)
+            return True, None
             
         except ValueError:
             logger.error("Invalid user ID format: %s", user_id)
+            return False, "Invalid user ID format"
         except Exception as e:
             logger.error(
                 "Error invalidating old tokens for user %s: %s",
@@ -137,6 +149,7 @@ class EmailVerificationService:
                 str(e),
                 exc_info=True
             )
+            return False, f"Failed to invalidate old tokens: {str(e)}"
     
     @staticmethod
     def get_recent_verification_count(db: Session, user_id: str, minutes: int = 60) -> int:
