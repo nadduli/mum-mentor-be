@@ -10,12 +10,7 @@ from api.v1.services.task_service import TaskService
 from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
 
-
-router = APIRouter(
-    prefix="/tasks",
-    tags=["Tasks"]
-)
-
+router = APIRouter(tags=["Tasks"])
 
 @router.patch("/{task_id}")
 def edit_task(
@@ -26,27 +21,11 @@ def edit_task(
 ):
     """
     Edit an existing task.
-
-    This endpoint allows authenticated users to update their tasks.
-    Users can only edit tasks that belong to them.
-
-    Args:
-        task_id: UUID of the task to edit
-        request_data: EditTaskRequest with optional fields (name, description, due_date)
-        db: Database session
-        current_user: Authenticated user from JWT token
-
-    Returns:
-        JSON response with updated task data
-
-    Raises:
-        404: Task not found or doesn't belong to user
-        400: Invalid request data
-        500: Internal server error
     """
     try:
-        # Retrieve the task
-        task = TaskService.get_task_by_id(db, task_id, current_user.id)
+
+        task_service = TaskService(db)
+        task = task_service.get_task_by_id(task_id, current_user.id)
         
         if not task:
             logger.warning(f"Task {task_id} not found for user {current_user.id}")
@@ -55,7 +34,8 @@ def edit_task(
                 message="Task not found"
             )
     
-        updated_task, error = TaskService.update_task(db, task, request_data)
+        
+        updated_task, error = task_service.update_task(task, request_data)
         
         if error:
             logger.error(f"Error updating task {task_id}: {error}")
