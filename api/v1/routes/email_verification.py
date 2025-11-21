@@ -96,7 +96,7 @@ async def resend_verification(
     if user.email_verified:
         logger.info("User email already verified: %s", request.email)
         return fail_response(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             message="Email is already verified"
         )
     

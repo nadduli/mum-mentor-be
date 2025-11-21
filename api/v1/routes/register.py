@@ -24,7 +24,8 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     response_description="User registration data",
     responses={
         201: {"description": "User successfully registered"},
-        400: {"description": "Invalid input or user already exists"},
+        400: {"description": "Invalid input or validation error"},
+        409: {"description": "Email already registered"},
         500: {"description": "Internal server error"}
     }
 )
@@ -53,6 +54,13 @@ async def register_user(
             user_data.email,
             error,
         )
+        # Return 409 Conflict for already registered users
+        if "already registered" in error.lower():
+            return fail_response(
+                status_code=status.HTTP_409_CONFLICT,
+                message=error
+            )
+        # Return 400 Bad Request for other errors
         return fail_response(
             status_code=status.HTTP_400_BAD_REQUEST,
             message=error
