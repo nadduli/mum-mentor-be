@@ -132,8 +132,6 @@ async def resend_verification(
         )
     
     try:
-        verification_link = f"{FRONTEND_URL}/verify-email?token={verification_token.token}"
-        
         subject = "Verify Your Email Address"
         body = f"""Hi {user.full_name},
 
@@ -141,11 +139,11 @@ We're so glad to have you here. You're one step closer to experiencing a calmer,
 
 Whether you're navigating pregnancy, caring for a newborn, or guiding a growing child — Nora is here with trusted answers, gentle guidance, and support whenever you need it.
 
-Tap the button below to confirm your email and complete your setup:
+Please use the verification code below to confirm your email and complete your setup:
 
-{verification_link}
+{verification_token.token}
 
-This verification link will expire in 24 hours.
+This verification code will expire in 24 hours.
 
 Thanks,
 The Nora Team"""

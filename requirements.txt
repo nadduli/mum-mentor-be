@@ -35,3 +35,8 @@ httpx==0.26.0
 # Email validation
 email-validator==2.1.0.post1
 user-agents
+
+requests>=2.31.0
+google-auth>=2.23.0
+google-auth-httplib2>=0.1.1
+google-auth-oauthlib>=1.1.0

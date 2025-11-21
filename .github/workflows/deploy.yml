@@ -1,4 +1,6 @@
 name: CI/CD Pipeline
+# Updated production deployment to use sshpass for consistency with staging
+# Added SSL automation scripts for certificate management
 
 on:
   push:
@@ -92,7 +94,8 @@ jobs:
             pip install -r requirements.txt
 
             # Run migrations
-            alembic upgrade head
+            alembic stamp 21c4c314e650
+            alembic upgrade heads
 
             # Restart service
             sudo systemctl restart mum-mentor-api-staging
@@ -111,15 +114,29 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'production'
     environment: production
     steps:
-      - name: Deploy to production server
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          script: |
+      - name: Deploy to production server (password-based)
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+          APP_DIR: /var/www/mum-mentor-be
+        run: |
+          set -e
+
+          # Install sshpass for password-based authentication (mirrors staging approach)
+          # This ensures consistency between staging and production deployments
+          sudo apt-get update || true
+          sudo apt-get install -y sshpass || true
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          # Add server to known_hosts to avoid interactive prompt
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # Connect using password and run deploy commands on the remote host
+          # Using sshpass for consistency with staging deployment method
+          sshpass -p "$SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" 'bash -s' <<'EOF'
             set -e
-            
             echo "Starting PRODUCTION deployment..."
             cd /var/www/mum-mentor-be
 
@@ -134,11 +151,16 @@ jobs:
             pip install -r requirements.txt
 
             # Run migrations
-            alembic upgrade head
+            alembic upgrade heads
 
             # Restart service
             sudo systemctl restart mum-mentor-api
             sudo systemctl status mum-mentor-api --no-pager
 
             echo "✅ Production deployment completed successfully!"
+          EOF
+
+          # TODO: When SSH key authentication is available, replace sshpass with:
+          # ssh -i ~/.ssh/production_key "$SERVER_USER@$SERVER_HOST" 'bash -s' <<'EOF'
+          # This will provide better security than password authentication
 

@@ -310,3 +310,214 @@ class TestWaitlist:
         
         # Verify all emails were sent
         assert mock_send_email.call_count == 3
+
+
+class TestWaitlistDelete:
+    """
+    Test suite for waitlist deletion endpoint (admin only)
+    """
+
+    def test_delete_waitlist_user_success_returns_200(self, client, db):
+        """
+        Test successful deletion of a waitlist user by admin.
+        
+        Expected behavior:
+        - Returns 200 status code
+        - Returns success message
+        - Returns deleted user data
+        - User is removed from database
+        """
+        from api.v1.models.user.user import Waitlist, User
+        from api.utils.auth_utils import create_access_token
+        
+        # Create a waitlist entry
+        waitlist_entry = Waitlist(
+            full_name="Test User",
+            email="test@example.com"
+        )
+        db.add(waitlist_entry)
+        db.commit()
+        db.refresh(waitlist_entry)
+        
+        # Create admin user
+        admin_user = User(
+            id=uuid.uuid4(),
+            full_name="Admin User",
+            email="admin@example.com",
+            role="admin",
+            is_active=True
+        )
+        db.add(admin_user)
+        db.commit()
+        
+        # Generate admin token
+        admin_token = create_access_token(admin_user.id, "admin")
+        
+        # Delete the waitlist entry
+        response = client.delete(
+            f"/api/v1/waitlist/{waitlist_entry.id}",
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
+        
+        # Assert status code
+        assert response.status_code == 200
+        
+        # Assert response structure
+        data = response.json()
+        assert data["message"] == "Waitlist entry deleted successfully"
+        assert data["data"]["id"] == str(waitlist_entry.id)
+        assert data["data"]["full_name"] == "Test User"
+        assert data["data"]["email"] == "test@example.com"
+        
+        # Verify entry is deleted from database
+        deleted_entry = db.query(Waitlist).filter(Waitlist.id == waitlist_entry.id).first()
+        assert deleted_entry is None
+
+    def test_delete_waitlist_user_not_found_returns_404(self, client, db):
+        """
+        Test deletion of non-existent waitlist entry.
+        
+        Expected behavior:
+        - Returns 404 status code
+        - Returns error message
+        """
+        from api.v1.models.user.user import User
+        from api.utils.auth_utils import create_access_token
+        
+        # Create admin user
+        admin_user = User(
+            id=uuid.uuid4(),
+            full_name="Admin User",
+            email="admin@example.com",
+            role="admin",
+            is_active=True
+        )
+        db.add(admin_user)
+        db.commit()
+        
+        # Generate admin token
+        admin_token = create_access_token(admin_user.id, "admin")
+        
+        # Try to delete non-existent entry
+        fake_id = str(uuid.uuid4())
+        response = client.delete(
+            f"/api/v1/waitlist/{fake_id}",
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
+        
+        # Assert status code
+        assert response.status_code == 404
+        
+        # Assert error message
+        data = response.json()
+        assert data["message"] == "Waitlist entry not found"
+
+    def test_delete_waitlist_invalid_id_format_returns_400(self, client, db):
+        """
+        Test deletion with invalid UUID format.
+        
+        Expected behavior:
+        - Returns 400 status code
+        - Returns validation error message
+        """
+        from api.v1.models.user.user import User
+        from api.utils.auth_utils import create_access_token
+        
+        # Create admin user
+        admin_user = User(
+            id=uuid.uuid4(),
+            full_name="Admin User",
+            email="admin@example.com",
+            role="admin",
+            is_active=True
+        )
+        db.add(admin_user)
+        db.commit()
+        
+        # Generate admin token
+        admin_token = create_access_token(admin_user.id, "admin")
+        
+        # Try to delete with invalid ID format
+        response = client.delete(
+            "/api/v1/waitlist/invalid-id-format",
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
+        
+        # Assert status code
+        assert response.status_code == 400
+        
+        # Assert error message
+        data = response.json()
+        assert data["message"] == "Invalid waitlist ID format"
+
+    def test_delete_waitlist_non_admin_returns_403(self, client, db):
+        """
+        Test deletion attempt by non-admin user.
+        
+        Expected behavior:
+        - Returns 403 status code
+        - Rejects access
+        """
+        from api.v1.models.user.user import Waitlist, User
+        from api.utils.auth_utils import create_access_token
+        
+        # Create a waitlist entry
+        waitlist_entry = Waitlist(
+            full_name="Test User",
+            email="test@example.com"
+        )
+        db.add(waitlist_entry)
+        db.commit()
+        db.refresh(waitlist_entry)
+        
+        # Create regular (non-admin) user
+        regular_user = User(
+            id=uuid.uuid4(),
+            full_name="Regular User",
+            email="regular@example.com",
+            role="user",
+            is_active=True
+        )
+        db.add(regular_user)
+        db.commit()
+        
+        # Generate regular user token
+        user_token = create_access_token(regular_user.id, "user")
+        
+        # Try to delete as non-admin
+        response = client.delete(
+            f"/api/v1/waitlist/{waitlist_entry.id}",
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        
+        # Assert status code
+        assert response.status_code == 403
+        
+        # Assert error message
+        data = response.json()
+        assert data["detail"] == "Admin access required"
+
+    def test_delete_waitlist_unauthorized_returns_401(self, client, db):
+        """
+        Test deletion attempt without authentication.
+        
+        Expected behavior:
+        - Returns 401 status code
+        - Rejects access
+        """
+        from api.v1.models.user.user import Waitlist
+        
+        # Create a waitlist entry
+        waitlist_entry = Waitlist(
+            full_name="Test User",
+            email="test@example.com"
+        )
+        db.add(waitlist_entry)
+        db.commit()
+        db.refresh(waitlist_entry)
+        
+        # Try to delete without authentication
+        response = client.delete(f"/api/v1/waitlist/{waitlist_entry.id}")
+        
+        # Assert status code
+        assert response.status_code == 403  # HTTPBearer returns 403 when no credentials

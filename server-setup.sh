@@ -185,14 +185,22 @@ ufw allow 'Nginx Full'
 ufw allow 'OpenSSH'
 print_success "Firewall configured"
 
-# Setup SSL with Let's Encrypt
+# Setup SSL with Let's Encrypt using automated script
 print_info "Do you want to setup SSL certificate with Let's Encrypt? (y/n)"
 read -r SETUP_SSL
 
 if [ "$SETUP_SSL" = "y" ]; then
-    print_info "Setting up SSL certificate..."
-    certbot --nginx -d "$DOMAIN_NAME" --non-interactive --agree-tos --email admin@$DOMAIN_NAME
-    print_success "SSL certificate installed"
+    print_info "Enter email for SSL certificate notifications (default: admin@$DOMAIN_NAME):"
+    read -r SSL_EMAIL
+    SSL_EMAIL=${SSL_EMAIL:-admin@$DOMAIN_NAME}
+    
+    print_info "Setting up SSL certificate using automated script..."
+    chmod +x "$APP_DIR/scripts/ssl-setup.sh"
+    "$APP_DIR/scripts/ssl-setup.sh" "$DOMAIN_NAME" "$SSL_EMAIL"
+    print_success "SSL certificate installed and auto-renewal configured"
+else
+    print_info "SSL setup skipped. You can run it later with:"
+    print_info "sudo $APP_DIR/scripts/ssl-setup.sh $DOMAIN_NAME your-email@domain.com"
 fi
 
 # Deactivate virtual environment

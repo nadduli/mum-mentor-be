@@ -1,4 +1,4 @@
-# **Mum Mentor AI (NORA)**
+# **Mum Mentor AI (NORA).**
 
 Nora is a digital companion designed to ensure no mother navigates parenthood alone. Our mission is to replace isolation with accessible, empathetic support—transforming motherhood from a solitary struggle into a connected, supported journey.
 
@@ -8,6 +8,7 @@ This is the Backend repo for the Application.
 1. **Fork the repository** and clone it:  
    ```sh
    https://github.com/hngprojects/mum-mentor-be.git
+
    ```
 2. **Navigate into the project directory**:  
    ```sh

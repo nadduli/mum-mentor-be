@@ -1,47 +1,45 @@
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 from sqlalchemy.orm import Session
+import random
 
 from api.v1.models.user.user import User, EmailVerificationToken
 from api.utils.logger import logger
-
 
 class EmailVerificationService:
     
     TOKEN_EXPIRY_HOURS = 24
     
     @staticmethod
-    def generate_verification_token() -> str:
-        return secrets.token_urlsafe(32)
+    def generate_verification_otp() -> str:
+        return ''.join([str(random.randint(0, 9)) for _ in range(6)])
     
     @staticmethod
     def create_verification_record(
         db: Session,
-        user_id: str
+        user_id: Union[str, uuid.UUID]
     ) -> Tuple[Optional[EmailVerificationToken], Optional[str]]:
         try:
-            user_uuid = uuid.UUID(user_id)
-            
-            user = User.fetch_unique(db, id=user_uuid)
-            if not user:
-                return None, "User not found"
-            
-            token = EmailVerificationService.generate_verification_token()
+            if isinstance(user_id, str):
+                user_id = uuid.UUID(user_id)
+
+            otp = EmailVerificationService.generate_verification_otp()
             expires_at = datetime.now(timezone.utc) + timedelta(
                 hours=EmailVerificationService.TOKEN_EXPIRY_HOURS
             )
             
             verification_token = EmailVerificationToken(
-                user_id=user_uuid,
-                token=token,
-                expires_at=expires_at
+                user_id=user_id,
+                token=otp,
+                expires_at=expires_at,
+                used=False
             )
             
             verification_token.insert(db)
             
-            logger.info("Verification token created for user: %s", user_id)
+            logger.info("Verification code created for user: %s", user_id)
             return verification_token, None
             
         except ValueError:
@@ -49,12 +47,12 @@ class EmailVerificationService:
         except Exception as e:
             db.rollback()
             logger.error(
-                "Error creating verification token for user %s: %s",
+                "Error creating verification code for user %s: %s",
                 user_id,
                 str(e),
                 exc_info=True
             )
-            return None, "Failed to create verification token"
+            return None, "Failed to create verification code"
     
     @staticmethod
     def verify_email_token(
@@ -65,12 +63,12 @@ class EmailVerificationService:
             verification_record = EmailVerificationToken.fetch_unique(db, token=token)
             
             if not verification_record:
-                logger.warning("Invalid verification token attempt")
-                return None, "Invalid verification token"
+                logger.warning("Invalid verification code attempt")
+                return None, "Invalid verification code"
             
             if verification_record.used:
-                logger.warning("Attempt to use already used token")
-                return None, "Verification token has already been used"
+                logger.warning("Attempt to use already used code")
+                return None, "Verification code has already been used"
             
             # Handle timezone for expires_at
             expires_at = verification_record.expires_at
@@ -78,8 +76,8 @@ class EmailVerificationService:
                 expires_at = expires_at.replace(tzinfo=timezone.utc)
             
             if datetime.now(timezone.utc) > expires_at:
-                logger.warning("Attempt to use expired token")
-                return None, "Verification token has expired"
+                logger.warning("Attempt to use expired code")
+                return None, "Verification code has expired"
             
             user = User.fetch_unique(db, id=verification_record.user_id)
             if not user:
@@ -102,7 +100,7 @@ class EmailVerificationService:
         except Exception as e:
             db.rollback()
             logger.error(
-                "Error verifying email token: %s",
+                "Error verifying email code: %s",
                 str(e),
                 exc_info=True
             )

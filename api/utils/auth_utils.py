@@ -13,10 +13,11 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 pwd_context = CryptContext(schemes="bcrypt", deprecated="auto")
 
-def create_access_token(user_id, role):
+def create_access_token(user_id, role, sid = None):
     user = {
         "user_id": str(user_id),
-        "role": role
+        "role": role,
+        "sid": str(sid)
     }
 
     payload = {
@@ -30,10 +31,11 @@ def create_access_token(user_id, role):
     return token
 
 
-def create_refresh_token(user_id, role):
+def create_refresh_token(user_id, role, sid = None):
     user = {
         "user_id": str(user_id),
-        "role": role
+        "role": role,
+        "sid": sid
     }
     payload = {
         "user": user,
@@ -44,6 +46,13 @@ def create_refresh_token(user_id, role):
     token = jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
 
     return token
+def generate_refresh_token(subject=None, role: str = "user"):
+    """Compatibility wrapper used by tests and older code.
+
+    Accepts `subject` (user id) and optional `role` and returns a signed JWT string.
+    """
+    user_id = str(subject) if subject is not None else ""
+    return create_refresh_token(user_id, role)
 
 
 def get_device_info(user_agent_str):
@@ -66,4 +75,9 @@ def verify_reset_password_token(token: str) -> dict[str, str]:
       return jwt.decode(token, JWT_SECRET, ALGORITHM)
     except Exception as e:
       raise HTTPException(status_code=401, detail=str(e))
-    
+
+def verify_refresh_token(token: str) -> dict:
+    try:
+        return jwt.decode(token, JWT_SECRET, ALGORITHM)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
