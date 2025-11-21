@@ -1,4 +1,5 @@
 from typing import Optional, Tuple
+from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -42,7 +43,7 @@ class UserService:
                     # Update existing user with new data
                     existing_user.full_name = user_data.full_name.strip()
                     existing_user.password_hash = hash_password(user_data.password)
-                    existing_user.update(db)
+                    existing_user.updated_at = datetime.now(timezone.utc)
                     
                     # Invalidate old verification tokens
                     EmailVerificationService.invalidate_old_tokens(db, str(existing_user.id))
@@ -77,13 +78,24 @@ class UserService:
                 phone_verified=False
             )
             
-            new_user.insert(db)
+            new_user.add(db)
+            db.flush()  # Flush to assign ID to new_user without committing
             
             verification_token_record, error = EmailVerificationService.create_verification_record(
                 db, str(new_user.id)
             )
             
-            token = verification_token_record.token if verification_token_record else None
+            if error or not verification_token_record:
+                db.rollback()
+                logger.error("Failed to create verification token for new user: %s", user_data.email)
+                return None, "Failed to generate verification code", None
+            
+            # Commit all changes atomically
+            db.commit()
+            db.refresh(new_user)
+            db.refresh(verification_token_record)
+            
+            token = verification_token_record.token
             
             logger.info("User registered successfully: %s", new_user.email)
             return new_user, None, token

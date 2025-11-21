@@ -37,7 +37,7 @@ class EmailVerificationService:
                 used=False
             )
             
-            verification_token.insert(db)
+            verification_token.add(db)
             
             logger.info("Verification code created for user: %s", user_id)
             return verification_token, None
@@ -120,14 +120,13 @@ class EmailVerificationService:
             for token in old_tokens:
                 token.used = True
                 token.used_at = datetime.now(timezone.utc)
-                token.update(db)
+                token.updated_at = datetime.now(timezone.utc)
             
             logger.info("Invalidated old tokens for user: %s", user_id)
             
         except ValueError:
             logger.error("Invalid user ID format: %s", user_id)
         except Exception as e:
-            db.rollback()
             logger.error(
                 "Error invalidating old tokens for user %s: %s",
                 user_id,
