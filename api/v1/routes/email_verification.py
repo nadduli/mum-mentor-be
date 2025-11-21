@@ -143,7 +143,7 @@ Please use the verification code below to confirm your email and complete your s
 
 {verification_token.token}
 
-This verification code will expire in 10 minutes.
+This verification code will expire in {EmailVerificationService.TOKEN_EXPIRY_MINUTES} minutes.
 
 Thanks,
 The Nora Team"""

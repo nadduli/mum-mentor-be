@@ -7,6 +7,7 @@ from api.v1.schemas.user import (
     UserRegistrationResponse
 )
 from api.v1.services.user_service import UserService
+from api.v1.services.email_verification import EmailVerificationService
 from api.v1.services.email_services import send_email
 from api.db.database import get_db
 from api.utils.responses import success_response, fail_response
@@ -80,7 +81,7 @@ Please use the verification code below to confirm your email and complete your s
 
 {verification_token}
 
-This verification code will expire in 10 minutes.
+This verification code will expire in {EmailVerificationService.TOKEN_EXPIRY_MINUTES} minutes.
 
 Thanks,
 The Nora Team"""
