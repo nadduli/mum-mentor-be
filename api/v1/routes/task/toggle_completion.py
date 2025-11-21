@@ -30,7 +30,7 @@ def toggle_task_completion(
     
     try:
         task_uuid = UUID(task_id)
-        user_uuid = UUID(current_user.id)
+        user_uuid = UUID(str(current_user.id))
     except (ValueError, AttributeError):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
