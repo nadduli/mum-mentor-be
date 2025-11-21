@@ -15,7 +15,6 @@ from api.utils.logger import logger
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 
 @router.post(
