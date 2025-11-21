@@ -50,7 +50,7 @@ def login_route(request: LoginRequest, db: Session = Depends(get_db),
 
         logger.info(f"Login attempt for email: {request.email}")
         
-        user = User.fetch_unique(db, email=request.email, is_active=True)
+        user = User.fetch_unique(db, email=request.email.lower(), is_active=True)
         if not user:
             logger.warning(f"User not found or not active: {request.email}")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active user not found")

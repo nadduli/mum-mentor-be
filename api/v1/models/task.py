@@ -3,9 +3,6 @@ from datetime import datetime, timezone
 from sqlalchemy import String, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from api.db.base_model import BaseModel
-import enum
-
-
 
 
 class Task(BaseModel):
@@ -32,10 +29,6 @@ class Task(BaseModel):
         default=lambda: datetime.now(timezone.utc),
         nullable=True
     )
-
-    due_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False)
     
     status: Mapped[str] = mapped_column(String(200), nullable=False, default="pending")
     
