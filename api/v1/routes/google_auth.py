@@ -2,17 +2,18 @@
 from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.orm import Session
 from api.db.database import get_db
-from datetime import datetime, timedelta
-from api.utils.responses import success_response, fail_response
+from datetime import datetime,  timezone
+from api.utils.responses import success_response, fail_response, JSONResponse
 from api.utils.logger import logger
 from api.v1.models.user.user import UserAuthSession
-from api.v1.schemas.google_auth_schema import GoogleAuthRequest, GoogleAuthResponse, UserResponse, RefreshTokenRequest, RefreshTokenResponse, RevokeRequest
-from api.v1.services.google_auth import google_auth_service
+from api.v1.schemas.google_auth_schema import GoogleAuthRequest, GoogleAuthResponse, UserResponse, RefreshTokenRequest, RevokeRequest
+from api.v1.services.google_auth import google_auth_service, run_verify
 from api.utils.deps import get_current_user
-from fastapi.security import HTTPAuthorizationCredentials
+from api.v1.models.user.user import User
 from api.v1.services.google_auth import GoogleVerificationResponse
 
 router = APIRouter(prefix="/google", tags=["Google Authentication"])
+
 
 
 @router.post("/login", status_code=status.HTTP_200_OK, response_model=GoogleAuthResponse)
@@ -23,15 +24,16 @@ async def google_login(payload: GoogleAuthRequest, request: Request, db: Session
     """
     logger.info("Google login attempt")
     # verify id_token with Google
-    try:
-        google_data: GoogleVerificationResponse = await run_verify(payload.id_token)
-    except Exception as exc:
-        logger.warning("Google token verification failed: %s", str(exc))
-        return fail_response(status_code=status.HTTP_401_UNAUTHORIZED, message="Invalid Google token")
+    google_data: GoogleVerificationResponse | JSONResponse = await run_verify(payload.id_token)
+    if not isinstance(google_data, dict):
+        logger.warning("Google token verification failed")
+        return google_data
 
-    # get or create user
+    google_data = GoogleVerificationResponse(**google_data) 
     try:
         user = google_auth_service.get_or_create_user(db, google_data)
+        if not isinstance(user, User):
+            return user
         client_ip = request.client.host if request.client else None
         user_agent = request.headers.get("User-Agent")
         session = google_auth_service.create_session(
@@ -78,8 +80,10 @@ async def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_
         db (Session, optional): Defaults to Depends(get_db).
     """
     payload_data = google_auth_service.verify_token(payload.refresh_token, refresh=True)
-    if not payload_data:
+    if isinstance(payload_data, JSONResponse):
         logger.warning("Invalid refresh token attempt")
+        return payload_data
+    if not payload_data:
         return fail_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             message="Invalid refresh token"
@@ -88,13 +92,18 @@ async def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_
     user_id = payload_data.get("user_id")
     session = db.query(UserAuthSession).filter(UserAuthSession.id == sid, UserAuthSession.is_revoked == False).first()
     logger.info(f"Session {session}")
-    if not session or session.expires_at < datetime.utcnow():
+    if not session or session.expires_at < datetime.now(timezone.utc):
         return fail_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             message="Refresh token session is invalid or expired"
         )
+    if not user_id:
+        return fail_response(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            message="Invalid refresh token payload"
+        )
     user = google_auth_service.get_user_by_id(db, user_id)
-    if not user:
+    if not user or isinstance(user, JSONResponse):
         return fail_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             message="User not found"
@@ -114,13 +123,7 @@ async def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_
         ).model_dump()
     )
 
-async def run_verify(token: str) -> GoogleVerificationResponse:
-    """
-    Helper to call the service verify method which is synchronous (keeps route clean).
-    """
-    # google_auth_service.verify_google_token is sync; we can call it directly (no await).
-    # But the route is async; call synchronously.
-    return google_auth_service.verify_google_token(token)
+
 
 
 @router.get("/user", status_code=status.HTTP_200_OK)
@@ -151,13 +154,15 @@ async def revoke(payload: RevokeRequest, db: Session = Depends(get_db)):
         db (Session, optional): Defaults to Depends(get_db).
     """
     payload_data = google_auth_service.verify_token(payload.refresh_token, refresh=True)
+    if isinstance(payload_data, JSONResponse):
+        return payload_data
     logger.info(f"payload_data: {payload_data}")
     if not payload_data:
         return fail_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             message="Invalid refresh token"
         )
-    
+
     sid = payload_data.get("sid")
 
     success = google_auth_service.revoke_session(db, str(sid))
