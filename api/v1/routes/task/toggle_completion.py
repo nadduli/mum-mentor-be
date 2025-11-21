@@ -9,7 +9,7 @@ from api.v1.schemas.task import TaskResponse, TaskStatusUpdate
 from api.v1.services.task_service import TaskService
 from api.utils.logger import logger
 
-router = APIRouter(tags=["Tasks"])
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 @router.patch("/{task_id}/status", response_model=TaskResponse)
 def toggle_task_completion(
