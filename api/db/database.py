@@ -22,7 +22,7 @@ if not DATABASE_URL:
     raise ValueError(f"No database URL configured for environment: {ENVIRONMENT}")
 
 
-engine = create_engine(DATABASE_URL, connect_args={"connect_timeout": 15})
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():

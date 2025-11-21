@@ -9,6 +9,7 @@ from api.v1.models.user.user import UserAuthSession
 from api.v1.schemas.google_auth_schema import GoogleAuthRequest, GoogleAuthResponse, UserResponse, RefreshTokenRequest, RevokeRequest
 from api.v1.services.google_auth import google_auth_service, run_verify
 from api.utils.deps import get_current_user
+from api.v1.models.user.user import User
 from api.v1.services.google_auth import GoogleVerificationResponse
 
 router = APIRouter(prefix="/google", tags=["Google Authentication"])
@@ -24,17 +25,15 @@ async def google_login(payload: GoogleAuthRequest, request: Request, db: Session
     logger.info("Google login attempt")
     # verify id_token with Google
     google_data: GoogleVerificationResponse | JSONResponse = await run_verify(payload.id_token)
-    if isinstance(google_data, fail_response.__class__):
+    if not isinstance(google_data, dict):
         logger.warning("Google token verification failed")
         return google_data
-    # google_data: GoogleVerificationResponse = google_verify
-    logger.info(f"Google data: {google_data.model_dump() if isinstance(google_data, GoogleVerificationResponse) else google_data}")
-    # logger.info("Google token verified successfully for google_id=%s", google_data.google_id)
-    google_data = GoogleVerificationResponse(**google_data) if isinstance(google_data, dict) else google_data
-    # get or create user
+
+    google_data = GoogleVerificationResponse(**google_data) 
     try:
-        if isinstance(google_data, GoogleVerificationResponse):
-            user = google_auth_service.get_or_create_user(db, google_data)
+        user = google_auth_service.get_or_create_user(db, google_data)
+        if not isinstance(user, User):
+            return user
         client_ip = request.client.host if request.client else None
         user_agent = request.headers.get("User-Agent")
         session = google_auth_service.create_session(

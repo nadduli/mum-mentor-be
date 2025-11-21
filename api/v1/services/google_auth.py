@@ -7,10 +7,9 @@ from datetime import datetime, timedelta
 import uuid
 import os
 import secrets
-import jwt
 from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
-from jose import JWTError
+from jose import jwt
 from typing import Optional, Dict, Any
 from api.utils.responses import fail_response, success_response
 from api.v1.models.user.user import User, UserProfile, UserAuthSession
@@ -193,17 +192,15 @@ class GoogleAuthService:
         try:
             session = db.query(UserAuthSession).filter(UserAuthSession.id == sid).first()
         except Exception:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail = "Invalid session id"
-            )
-        if not session:
             return False
-        session.is_revoked = True
-        session.revoked_at = datetime.utcnow()
-        logger.info("Session revoked at: %s", session.revoked_at)
-        db.commit()
-        return True
+        try:
+            session.is_revoked = True
+            session.revoked_at = datetime.utcnow()
+            logger.info("Session revoked at: %s", session.revoked_at)
+            db.commit()
+            return True
+        except Exception:
+            return False
 
     def issue_local_access_token(self, user: User, sid: str | None) -> str:
         """
