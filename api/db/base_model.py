@@ -23,13 +23,13 @@ class BaseModel(Base):
         onupdate=lambda: datetime.now(timezone.utc)
     )
 
-    def add(self, db:Session):
-        """Add new object to db session"""
+    def add(self, db: Session):
+        """Add new object to db session without committing"""
         db.add(self)
         return self
     
-    def remove(self, db:Session):
-        """Mark Object for deletion (no commit)"""
+    def remove(self, db: Session):
+        """Mark Object for deletion without committing"""
         db.delete(self)
         return self
 
