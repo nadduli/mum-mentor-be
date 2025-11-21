@@ -1,16 +1,16 @@
 name: CI/CD Pipeline
 # Updated production deployment to use sshpass for consistency with staging
-# Added SSL automation scripts for certificate management
-
 on:
   push:
     branches:
       - main
       - staging
+      - dev
   pull_request:
     branches:
       - main
       - staging
+      - dev
   workflow_dispatch:
     inputs:
       target:
@@ -93,10 +93,6 @@ jobs:
             pip install --upgrade pip
             pip install -r requirements.txt
 
-            # Run migrations
-            alembic stamp 21c4c314e650
-            alembic upgrade heads
-
             # Restart service
             sudo systemctl restart mum-mentor-api-staging
             sudo systemctl status mum-mentor-api-staging --no-pager
@@ -111,7 +107,8 @@ jobs:
     # Only allow manual production deploys via workflow_dispatch and require
     # the 'target' input be 'production'. Protect the production environment
     # in GitHub (required reviewers) for extra safety.
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'production'
+    # Also ensure this job does not run for pushes to the `dev` branch.
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'production' && github.ref != 'refs/heads/dev'
     environment: production
     steps:
       - name: Deploy to production server (password-based)
@@ -149,9 +146,6 @@ jobs:
             . venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
-
-            # Run migrations
-            alembic upgrade heads
 
             # Restart service
             sudo systemctl restart mum-mentor-api
