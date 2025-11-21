@@ -9,7 +9,7 @@ from api.v1.services.task_service import TaskService
 from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
 
-router = APIRouter(tags=["Tasks"])
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 @router.delete("/{task_id}")
 def delete_task_endpoint(

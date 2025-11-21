@@ -10,9 +10,9 @@ from api.v1.services.task_service import TaskService
 from api.utils.responses import success_response
 from api.utils.logger import logger
 
-router = APIRouter(tags=["Tasks"])
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
-@router.get("/tasks/")
+@router.get("/")
 def list_tasks(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(10, ge=1, le=100, description="Items per page"),
@@ -59,14 +59,14 @@ def list_tasks(
         total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
         
         response_data = {
-            "tasks": tasks_data,
+            "details": tasks_data,
             "pagination": {
                 "page": page,
                 "per_page": per_page,
-                "total_items": total_count,
+                "total_count": total_count,
                 "total_pages": total_pages,
-                "has_next": page < total_pages,
-                "has_prev": page > 1
+                "next": page + 1 if page < total_pages else None,
+                "prev": page - 1 if page > 1 else None
             }
         }
         
