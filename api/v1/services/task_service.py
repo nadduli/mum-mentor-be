@@ -1,35 +1,20 @@
 from uuid import UUID
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from datetime import datetime, timezone
-
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 
-from api.v1.models.task import Task
-from api.v1.schemas.task import EditTaskRequest
-from api.utils.logger import logger
-from sqlalchemy.orm import Session
 from api.v1.models.task import Task
 from api.v1.models.user.user import User
+from api.v1.schemas.task import CreateTaskRequest, EditTaskRequest
 from api.utils.logger import logger
-from uuid import UUID
-from api.v1.schemas.task import EditTaskRequest
-from typing import Optional, Tuple
-# from fastapi import HTTPException
 
 
-
-
-def create_task(request, db: Session, current_user: User):
+def create_task(request: CreateTaskRequest, db: Session, current_user: User) -> Task:
     """Create a new task for the current user"""
-
     try:
         logger.info(f"Creating task for user {current_user.id}")
-        # existing_task = Task.fetch_one(db_session=db, name=request.name, user_id=current_user.id)
-
-        # if existing_task:
-        #     raise HTTPException(status_code=401, detail="User already created Taskname")
-
-
+        
         task = Task(
             user_id=current_user.id,
             name=request.name,
@@ -42,7 +27,6 @@ def create_task(request, db: Session, current_user: User):
         task.insert(db)  # Using BaseModel CRUD
 
         logger.info(f"Task created successfully for user {current_user.id}")
-
         return task
 
     except Exception as e:
@@ -77,6 +61,44 @@ class TaskService:
         except Exception as e:
             logger.error(f"Error retrieving task: {str(e)}")
             return None
+
+    def get_user_tasks(
+        self, 
+        user_id: UUID, 
+        page: int = 1, 
+        per_page: int = 10, 
+        status: Optional[str] = None
+    ) -> Tuple[List[Task], int]:
+        """
+        Retrieve paginated tasks for a user with optional status filter.
+        
+        Args:
+            user_id: UUID of the user
+            page: Page number (starts from 1)
+            per_page: Number of items per page
+            status: Optional status filter ('pending', 'completed')
+            
+        Returns:
+            Tuple of (tasks, total_count)
+        """
+        try:
+            query = self.db.query(Task).filter(Task.user_id == user_id)
+            
+            if status:
+                query = query.filter(Task.status == status)
+            
+            # Get total count
+            total_count = query.count()
+            
+            # Apply pagination
+            offset = (page - 1) * per_page
+            tasks = query.offset(offset).limit(per_page).all()
+            
+            return tasks, total_count
+            
+        except Exception as e:
+            logger.error(f"Error retrieving user tasks: {str(e)}")
+            return [], 0
 
     def toggle_completion(
         self, task_id: UUID, completed: bool, user_id: UUID
@@ -153,7 +175,6 @@ class TaskService:
             self.db.rollback()
             logger.error(f"Error updating task: {str(e)}")
             return None, str(e)
-        
 
     @staticmethod
     def delete_task(db: Session, task: Task) -> bool:
