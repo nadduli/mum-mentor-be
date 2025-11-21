@@ -2,6 +2,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from api.v1.models.task import Task
 from api.utils.logger import logger
+import uuid
 
 
 class TaskService:
@@ -9,7 +10,7 @@ class TaskService:
     @staticmethod
     def list_tasks(
         session: Session,
-        user_id: int,
+        user_id: uuid.UUID,
         page: int,
         per_page: int,
         status: str | None

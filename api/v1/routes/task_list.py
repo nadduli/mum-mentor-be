@@ -7,6 +7,7 @@ from api.utils.deps import get_current_user
 from api.v1.schemas.task_list import TaskListResponse, TaskItem, Pagination
 from api.v1.services.task_list import TaskService
 from api.utils.responses import success_response, fail_response
+from api.v1.models.user.user import User
 
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -18,7 +19,7 @@ def list_tasks(
     per_page: int = Query(10, ge=1),
     task_status: str | None = "pending",
     session: Session = Depends(get_db),
-    user=Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     tasks, total, error = TaskService.list_tasks(
         session=session,
@@ -59,7 +60,7 @@ def list_tasks(
         status_code=200,
         message="Tasks retrieved successfully",
         data={
-            "details": [task.model_dump() for task in details],
+            "details": details,
             "pagination": pagination.model_dump(),
         }
     )

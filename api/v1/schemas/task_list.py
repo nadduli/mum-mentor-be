@@ -27,6 +27,7 @@ class TaskListData(BaseModel):
 
 
 class TaskListResponse(BaseModel):
+    status: str
+    status_code: int
     message: str
-    success: bool = True
     data: TaskListData
