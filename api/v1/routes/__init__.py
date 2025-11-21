@@ -16,6 +16,7 @@ from .user_profile import router as user_profile_router
 from .admin import router as admin_router
 from .faq import router as faq_router
 from .task import router as task_router
+from .task_list import router as task_list_router
 
 
 from .user_settings import router as user_settings_router
@@ -38,6 +39,7 @@ app.include_router(google_auth_router)
 # app.include_router(change_password_router)
 app.include_router(delete_account_router)
 app.include_router(task_router)
+app.include_router(task_list_router)
 
 
 app.include_router(edit_task_router)
