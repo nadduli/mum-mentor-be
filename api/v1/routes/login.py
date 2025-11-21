@@ -77,17 +77,18 @@ def login_route(request: LoginRequest, db: Session = Depends(get_db),
         user.last_login_at = datetime.now(timezone.utc)
         user.update(db)
 
-        access_token = create_access_token(user.id, user.role)
-        refresh_token = create_refresh_token(user.id, user.role)
+        
+        access_token, access_expires = create_access_token(user.id, user.role)
+        refresh_token, refresh_expires = create_refresh_token(user.id, user.role)
 
-        # Use BaseModel insert for session
+        
         session = UserAuthSession(
             user_id=user.id,
             refresh_token=refresh_token,
             ip_address=ip_address,
             user_agent=user_agent,
             device_name=device_name,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=7)
+            expires_at=refresh_expires
         )
 
         session.insert(db)

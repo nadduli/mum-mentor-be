@@ -4,6 +4,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from api.db.database import get_db
 from api.v1.models.user.user import User
+from api.v1.models.blacklist import TokenBlacklist
 import os
 import uuid
 
@@ -14,7 +15,7 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 
 def get_current_user(
-    credentials : HTTPAuthorizationCredentials = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
     credentials_exception = HTTPException(
@@ -27,6 +28,14 @@ def get_current_user(
         raise credentials_exception
     
     token = credentials.credentials
+
+    # Check if token is blacklisted
+    if TokenBlacklist.is_token_blacklisted(db, token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -84,6 +93,14 @@ def get_admin_user(
     
     token = credentials.credentials
 
+    # Check if token is blacklisted
+    if TokenBlacklist.is_token_blacklisted(db, token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_data = payload.get("user")
@@ -117,3 +134,7 @@ def get_admin_user(
         raise forbidden_exception
 
     return user
+
+
+
+security = HTTPBearer()
