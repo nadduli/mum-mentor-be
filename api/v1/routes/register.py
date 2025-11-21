@@ -7,6 +7,7 @@ from api.v1.schemas.user import (
     UserRegistrationResponse
 )
 from api.v1.services.user_service import UserService
+from api.v1.services.email_verification import EmailVerificationService
 from api.v1.services.email_services import send_email
 from api.db.database import get_db
 from api.utils.responses import success_response, fail_response
@@ -23,7 +24,8 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     response_description="User registration data",
     responses={
         201: {"description": "User successfully registered"},
-        400: {"description": "Invalid input or user already exists"},
+        400: {"description": "Invalid input or validation error"},
+        409: {"description": "Email already registered"},
         500: {"description": "Internal server error"}
     }
 )
@@ -52,6 +54,13 @@ async def register_user(
             user_data.email,
             error,
         )
+        # Return 409 Conflict for already registered users
+        if "already registered" in error.lower():
+            return fail_response(
+                status_code=status.HTTP_409_CONFLICT,
+                message=error
+            )
+        # Return 400 Bad Request for other errors
         return fail_response(
             status_code=status.HTTP_400_BAD_REQUEST,
             message=error
@@ -80,7 +89,7 @@ Please use the verification code below to confirm your email and complete your s
 
 {verification_token}
 
-This verification code will expire in 24 hours.
+This verification code will expire in {EmailVerificationService.TOKEN_EXPIRY_MINUTES} minutes.
 
 Thanks,
 The Nora Team"""

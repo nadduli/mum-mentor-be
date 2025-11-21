@@ -15,7 +15,6 @@ from api.utils.logger import logger
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 
 @router.post(
@@ -96,7 +95,7 @@ async def resend_verification(
     if user.email_verified:
         logger.info("User email already verified: %s", request.email)
         return fail_response(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             message="Email is already verified"
         )
     
@@ -111,18 +110,30 @@ async def resend_verification(
             message="Too many verification requests. Please try again later"
         )
     
-    EmailVerificationService.invalidate_old_tokens(db, str(user.id))
+    success, invalidate_error = EmailVerificationService.invalidate_old_tokens(db, str(user.id))
+    if not success:
+        db.rollback()
+        logger.error("Failed to invalidate old tokens for: %s. Error: %s", request.email, invalidate_error)
+        return fail_response(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to invalidate old verification tokens"
+        )
     
     verification_token, error = EmailVerificationService.create_verification_record(
         db, str(user.id)
     )
     
     if error or not verification_token:
+        db.rollback()
         logger.error("Failed to create verification token for: %s", request.email)
         return fail_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to generate verification token"
         )
+    
+    # Commit all changes atomically
+    db.commit()
+    db.refresh(verification_token)
     
     if not user.email:
         logger.error("User has no email address: %s", str(user.id))
@@ -143,7 +154,7 @@ Please use the verification code below to confirm your email and complete your s
 
 {verification_token.token}
 
-This verification code will expire in 24 hours.
+This verification code will expire in {EmailVerificationService.TOKEN_EXPIRY_MINUTES} minutes.
 
 Thanks,
 The Nora Team"""

@@ -10,7 +10,7 @@ from api.utils.logger import logger
 
 class EmailVerificationService:
     
-    TOKEN_EXPIRY_HOURS = 24
+    TOKEN_EXPIRY_MINUTES = 10
     
     @staticmethod
     def generate_verification_otp() -> str:
@@ -27,7 +27,7 @@ class EmailVerificationService:
 
             otp = EmailVerificationService.generate_verification_otp()
             expires_at = datetime.now(timezone.utc) + timedelta(
-                hours=EmailVerificationService.TOKEN_EXPIRY_HOURS
+                minutes=EmailVerificationService.TOKEN_EXPIRY_MINUTES
             )
             
             verification_token = EmailVerificationToken(
@@ -37,7 +37,7 @@ class EmailVerificationService:
                 used=False
             )
             
-            verification_token.insert(db)
+            verification_token.add(db)
             
             logger.info("Verification code created for user: %s", user_id)
             return verification_token, None
@@ -45,7 +45,6 @@ class EmailVerificationService:
         except ValueError:
             return None, "Invalid user ID format"
         except Exception as e:
-            db.rollback()
             logger.error(
                 "Error creating verification code for user %s: %s",
                 user_id,
@@ -86,13 +85,18 @@ class EmailVerificationService:
             if user.email_verified:
                 return None, "Email is already verified"
             
-            # Update using BaseModel pattern
+            # Update user and verification record
             user.email_verified = True
-            user.update(db)
+            user.updated_at = datetime.now(timezone.utc)
             
             verification_record.used = True
             verification_record.used_at = datetime.now(timezone.utc)
-            verification_record.update(db)
+            verification_record.updated_at = datetime.now(timezone.utc)
+            
+            # Commit both updates atomically
+            db.commit()
+            db.refresh(user)
+            db.refresh(verification_record)
             
             logger.info("Email verified successfully for user: %s", user.email)
             return user, None
@@ -107,7 +111,17 @@ class EmailVerificationService:
             return None, "An error occurred during email verification"
     
     @staticmethod
-    def invalidate_old_tokens(db: Session, user_id: str) -> None:
+    def invalidate_old_tokens(db: Session, user_id: str) -> Tuple[bool, Optional[str]]:
+        """
+        Invalidate all unused verification tokens for a user.
+        
+        Args:
+            db: Database session
+            user_id: User ID as string
+            
+        Returns:
+            Tuple of (success: bool, error_message: Optional[str])
+        """
         try:
             user_uuid = uuid.UUID(user_id)
             
@@ -120,20 +134,22 @@ class EmailVerificationService:
             for token in old_tokens:
                 token.used = True
                 token.used_at = datetime.now(timezone.utc)
-                token.update(db)
+                token.updated_at = datetime.now(timezone.utc)
             
             logger.info("Invalidated old tokens for user: %s", user_id)
+            return True, None
             
         except ValueError:
             logger.error("Invalid user ID format: %s", user_id)
+            return False, "Invalid user ID format"
         except Exception as e:
-            db.rollback()
             logger.error(
                 "Error invalidating old tokens for user %s: %s",
                 user_id,
                 str(e),
                 exc_info=True
             )
+            return False, f"Failed to invalidate old tokens: {str(e)}"
     
     @staticmethod
     def get_recent_verification_count(db: Session, user_id: str, minutes: int = 60) -> int:
