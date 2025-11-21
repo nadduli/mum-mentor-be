@@ -16,7 +16,9 @@ def test_user(db_session):
         email_verified=False,
         phone_verified=False
     )
-    user.insert(db_session)
+    user.add(db_session)
+    db_session.commit()
+    db_session.refresh(user)
     return user
 
 
@@ -29,7 +31,9 @@ def verified_user(db_session):
         email_verified=True,
         phone_verified=False
     )
-    user.insert(db_session)
+    user.add(db_session)
+    db_session.commit()
+    db_session.refresh(user)
     return user
 
 
@@ -68,6 +72,8 @@ class TestEmailVerification:
         verification_token, _ = EmailVerificationService.create_verification_record(
             db_session, str(test_user.id)
         )
+        db_session.commit()
+        db_session.refresh(verification_token)
         
         response = client.post(
             "/api/v1/auth/verify-email",
@@ -104,7 +110,8 @@ class TestEmailVerification:
             expires_at=expired_time,
             used=False
         )
-        verification_token.insert(db_session)
+        verification_token.add(db_session)
+        db_session.commit()
         
         response = client.post(
             "/api/v1/auth/verify-email",
@@ -118,6 +125,8 @@ class TestEmailVerification:
         verification_token, _ = EmailVerificationService.create_verification_record(
             db_session, str(test_user.id)
         )
+        db_session.commit()
+        db_session.refresh(verification_token)
         
         client.post(
             "/api/v1/auth/verify-email",
@@ -136,6 +145,8 @@ class TestEmailVerification:
         verification_token, _ = EmailVerificationService.create_verification_record(
             db_session, str(verified_user.id)
         )
+        db_session.commit()
+        db_session.refresh(verification_token)
         
         response = client.post(
             "/api/v1/auth/verify-email",
@@ -239,6 +250,7 @@ class TestEmailVerificationService:
             EmailVerificationService.create_verification_record(
                 db_session, str(test_user.id)
             )
+        db_session.commit()
         
         count = EmailVerificationService.get_recent_verification_count(
             db_session, str(test_user.id), minutes=60
