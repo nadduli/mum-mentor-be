@@ -110,7 +110,14 @@ async def resend_verification(
             message="Too many verification requests. Please try again later"
         )
     
-    EmailVerificationService.invalidate_old_tokens(db, str(user.id))
+    success, invalidate_error = EmailVerificationService.invalidate_old_tokens(db, str(user.id))
+    if not success:
+        db.rollback()
+        logger.error("Failed to invalidate old tokens for: %s. Error: %s", request.email, invalidate_error)
+        return fail_response(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to invalidate old verification tokens"
+        )
     
     verification_token, error = EmailVerificationService.create_verification_record(
         db, str(user.id)

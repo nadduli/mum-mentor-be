@@ -46,7 +46,11 @@ class UserService:
                     existing_user.updated_at = datetime.now(timezone.utc)
                     
                     # Invalidate old verification tokens
-                    EmailVerificationService.invalidate_old_tokens(db, str(existing_user.id))
+                    success, invalidate_error = EmailVerificationService.invalidate_old_tokens(db, str(existing_user.id))
+                    if not success:
+                        db.rollback()
+                        logger.error("Failed to invalidate old verification tokens for: %s. Error: %s", user_data.email, invalidate_error)
+                        return None, "Failed to invalidate old verification tokens", None
                     
                     # Generate new OTP
                     verification_token_record, error = EmailVerificationService.create_verification_record(
