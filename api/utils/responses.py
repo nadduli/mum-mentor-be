@@ -1,10 +1,11 @@
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 
-def success_response(status_code: int, message: str, data: Optional[dict] = None):
+def success_response(status_code: int, message: str, 
+                     data: Optional[dict] = None):
     """Returns a JSON response for success responses"""
 
     response_data = {
@@ -20,7 +21,8 @@ def success_response(status_code: int, message: str, data: Optional[dict] = None
 
 
 def auth_response(
-    status_code: int, message: str, access_token: str, refresh_token: str, data: Optional[dict] = None
+    status_code: int, message: str, access_token: str, 
+    refresh_token: str, data: Optional[dict] = None
 ):
     """Returns a JSON response for successful auth responses"""
 
@@ -40,14 +42,15 @@ def auth_response(
     )
 
 
-def fail_response(status_code: int, message: str, data: Optional[dict] = None):
+def fail_response(status_code: int, message: str, 
+                  context: Optional[dict] = None):
     """Returns a JSON response for failure responses"""
 
     response_data = {
         "status": "failure",
         "status_code": status_code,
         "message": message,
-        "data": data or {},  # Ensure data is always a dictionary
+        "error": context or {},
     }
 
     return JSONResponse(
