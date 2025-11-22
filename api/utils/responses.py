@@ -68,4 +68,4 @@ def validation_error_response(errors: dict):
         "errors": errors,
     }
 
-    return JSONResponse(status_code=400, content=response)
+    return JSONResponse(status_code=400, content=jsonable_encoder(response))
