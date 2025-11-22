@@ -24,6 +24,8 @@ from .task.edit_task import router as edit_task_router
 from .task.toggle_completion import router as toggle_completion_router
 from .task.delete_task import router as delete_task_router
 
+from .profile_setup.profile_setup import router as profile_setup_router
+
 app = APIRouter()
 
 # Authentication routes
@@ -46,6 +48,8 @@ app.include_router(edit_task_router)
 app.include_router(toggle_completion_router)
 app.include_router(delete_task_router)
 
+# Profile Setup routes
+app.include_router(profile_setup_router)
 
 # Other routes
 app.include_router(user_profile_router)
