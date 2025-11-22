@@ -8,23 +8,42 @@ from api.v1.models.task import Task
 from api.v1.models.user.user import User
 from api.v1.schemas.task import CreateTaskRequest, EditTaskRequest
 from api.utils.logger import logger
-
+from fastapi import HTTPException, status
+from sqlalchemy import func
 
 def create_task(request: CreateTaskRequest, db: Session, current_user: User) -> Task:
     """Create a new task for the current user"""
+
     try:
         logger.info(f"Creating task for user {current_user.id}")
-        
+
+        # Normalize input title
+        normalized_name = request.name.strip().lower()
+
+        # Duplicate prevention (case-insensitive + trimmed)
+        existing_task = db.query(Task).filter(
+            Task.user_id == current_user.id,
+            func.lower(func.trim(Task.name)) == normalized_name
+        ).first()
+
+        if existing_task:
+            logger.warning(f"Duplicate task title for user {current_user.id}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A task with this title already exists"
+            )
+
+        # Create task
         task = Task(
             user_id=current_user.id,
-            name=request.name,
+            name=request.name.strip(),
             description=request.description,
             due_date=request.due_date,
             status="pending",
             completed_at=None
         )
 
-        task.insert(db)  # Using BaseModel CRUD
+        task.insert(db)
 
         logger.info(f"Task created successfully for user {current_user.id}")
         return task

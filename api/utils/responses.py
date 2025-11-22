@@ -56,3 +56,16 @@ def fail_response(status_code: int, message: str,
     return JSONResponse(
         status_code=status_code, content=jsonable_encoder(response_data)
     )
+
+    
+def validation_error_response(errors: dict):
+    """Standardized validation error response"""
+
+    response = {
+        "error": "VALIDATION_ERROR",
+        "message": "The request contains invalid fields",
+        "status_code": 400,
+        "errors": errors,
+    }
+
+    return JSONResponse(status_code=400, content=jsonable_encoder(response))
