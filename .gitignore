@@ -40,6 +40,9 @@ logs/
 tmp/
 temp/
 
+# Alembic migrations: generated on server only
+alembic/versions/
+
 # Test / Coverage
 .pytest_cache/
 .hypothesis/
