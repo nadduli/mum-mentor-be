@@ -9,7 +9,7 @@ from api.v1.models.user.user import User
 from api.v1.schemas.task import CreateTaskRequest, EditTaskRequest
 from api.utils.logger import logger
 from fastapi import HTTPException, status
-
+from sqlalchemy import func
 
 def create_task(request: CreateTaskRequest, db: Session, current_user: User) -> Task:
     """Create a new task for the current user"""
@@ -17,10 +17,13 @@ def create_task(request: CreateTaskRequest, db: Session, current_user: User) -> 
     try:
         logger.info(f"Creating task for user {current_user.id}")
 
-        # 🔍 1. Prevent duplicate task titles
+        # Normalize input title
+        normalized_name = request.name.strip().lower()
+
+        # Duplicate prevention (case-insensitive + trimmed)
         existing_task = db.query(Task).filter(
             Task.user_id == current_user.id,
-            Task.name == request.name
+            func.lower(func.trim(Task.name)) == normalized_name
         ).first()
 
         if existing_task:
@@ -30,10 +33,10 @@ def create_task(request: CreateTaskRequest, db: Session, current_user: User) -> 
                 detail="A task with this title already exists"
             )
 
-        # 2. Create task
+        # Create task
         task = Task(
             user_id=current_user.id,
-            name=request.name,
+            name=request.name.strip(),
             description=request.description,
             due_date=request.due_date,
             status="pending",
