@@ -52,6 +52,8 @@ jobs:
           pip install pytest pytest-asyncio httpx
           pytest -v || echo "No tests found yet"
 
+
+
   deploy-staging:
     name: Deploy to Staging (Auto)
     runs-on: [self-hosted, hng-13-runner]
@@ -92,7 +94,12 @@ jobs:
             . venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
+            
+            # Generate alembic revision on the server (autogenerate). This ensures migrations are created/applied on the server only.
+            alembic -c alembic.ini revision --autogenerate -m "Auto migration from deployment" || true
 
+            # Apply migrations
+            alembic -c alembic.ini upgrade head
 
             # Restart service
             sudo systemctl restart mum-mentor-api-staging
@@ -147,6 +154,12 @@ jobs:
             . venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
+            
+            # Generate alembic revision on the server (autogenerate).
+            alembic -c alembic.ini revision --autogenerate -m "Auto migration from deployment" || true
+
+            # Apply migrations
+            alembic -c alembic.ini upgrade head
 
             # Restart service
             sudo systemctl restart mum-mentor-api
