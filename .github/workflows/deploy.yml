@@ -95,11 +95,53 @@ jobs:
             pip install --upgrade pip
             pip install -r requirements.txt
             
-            # Generate alembic revision on the server (autogenerate). This ensures migrations are created/applied on the server only.
-            alembic -c alembic.ini revision --autogenerate -m "Auto migration from deployment" || true
+            # --- migration block (autogenerate if needed, apply, merge heads) ---
+            LOCK_DIR="/tmp/deploy_migrations.lock"
+            TS=$(date +%Y%m%d_%H%M%S)
+            ALEMBIC_CONF="alembic.ini"
 
-            # Apply migrations
-            alembic -c alembic.ini upgrade head
+            if [ ! -f "$ALEMBIC_CONF" ]; then
+              echo "No $ALEMBIC_CONF found, skipping migrations."
+            else
+              if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+                echo "Another deployment/migration is running — aborting to avoid conflicts.";
+                exit 1
+              fi
+              trap 'rm -rf "$LOCK_DIR"' EXIT
+
+              echo "Generating migration (if needed)..."
+              alembic -c "$ALEMBIC_CONF" revision --autogenerate -m "auto_deploy_${TS}" 2>&1 | tee /tmp/alembic_revision_${TS}.log || true
+
+              # detect new migration file
+              NEW_FILE=$(ls -1 alembic/versions 2>/dev/null | tail -n 1 || true)
+              if [ -z "$NEW_FILE" ]; then
+                echo "✅ No migration created (no schema changes detected)."
+              else
+                echo "✅ Migration created: alembic/versions/$NEW_FILE"
+              fi
+
+              echo "Applying migrations..."
+              alembic -c "$ALEMBIC_CONF" upgrade head
+
+              # detect multiple heads and merge if needed
+              HEADS=$(alembic -c "$ALEMBIC_CONF" heads --verbose 2>/dev/null | awk '/^[0-9a-f]{7,40}/ {print $1}' | tr '\n' ' ' | sed 's/ $//') || true
+              if [ -n "$HEADS" ]; then
+                HEAD_COUNT=$(echo "$HEADS" | wc -w)
+                if [ "$HEAD_COUNT" -gt 1 ]; then
+                  echo "Multiple alembic heads detected: $HEADS"
+                  echo "Merging heads into a single revision..."
+                  alembic -c "$ALEMBIC_CONF" merge -m "merge_auto_${TS}" $HEADS
+                  alembic -c "$ALEMBIC_CONF" upgrade head
+                  echo "Merged heads and applied migrations."
+                else
+                  echo "Single alembic head present — OK."
+                fi
+              else
+                echo "No alembic heads detected — nothing to merge."
+              fi
+
+              rm -f /tmp/alembic_revision_${TS}.log 2>/dev/null || true
+            fi
 
             # Restart service
             sudo systemctl restart mum-mentor-api-staging
@@ -155,11 +197,53 @@ jobs:
             pip install --upgrade pip
             pip install -r requirements.txt
             
-            # Generate alembic revision on the server (autogenerate).
-            alembic -c alembic.ini revision --autogenerate -m "Auto migration from deployment" || true
+            # --- migration block (autogenerate if needed, apply, merge heads) ---
+            LOCK_DIR="/tmp/deploy_migrations.lock"
+            TS=$(date +%Y%m%d_%H%M%S)
+            ALEMBIC_CONF="alembic.ini"
 
-            # Apply migrations
-            alembic -c alembic.ini upgrade head
+            if [ ! -f "$ALEMBIC_CONF" ]; then
+              echo "No $ALEMBIC_CONF found, skipping migrations."
+            else
+              if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+                echo "Another deployment/migration is running — aborting to avoid conflicts.";
+                exit 1
+              fi
+              trap 'rm -rf "$LOCK_DIR"' EXIT
+
+              echo "Generating migration (if needed)..."
+              alembic -c "$ALEMBIC_CONF" revision --autogenerate -m "auto_deploy_${TS}" 2>&1 | tee /tmp/alembic_revision_${TS}.log || true
+
+              # detect new migration file
+              NEW_FILE=$(ls -1 alembic/versions 2>/dev/null | tail -n 1 || true)
+              if [ -z "$NEW_FILE" ]; then
+                echo "✅ No migration created (no schema changes detected)."
+              else
+                echo "✅ Migration created: alembic/versions/$NEW_FILE"
+              fi
+
+              echo "Applying migrations..."
+              alembic -c "$ALEMBIC_CONF" upgrade head
+
+              # detect multiple heads and merge if needed
+              HEADS=$(alembic -c "$ALEMBIC_CONF" heads --verbose 2>/dev/null | awk '/^[0-9a-f]{7,40}/ {print $1}' | tr '\n' ' ' | sed 's/ $//') || true
+              if [ -n "$HEADS" ]; then
+                HEAD_COUNT=$(echo "$HEADS" | wc -w)
+                if [ "$HEAD_COUNT" -gt 1 ]; then
+                  echo "Multiple alembic heads detected: $HEADS"
+                  echo "Merging heads into a single revision..."
+                  alembic -c "$ALEMBIC_CONF" merge -m "merge_auto_${TS}" $HEADS
+                  alembic -c "$ALEMBIC_CONF" upgrade head
+                  echo "Merged heads and applied migrations."
+                else
+                  echo "Single alembic head present — OK."
+                fi
+              else
+                echo "No alembic heads detected — nothing to merge."
+              fi
+
+              rm -f /tmp/alembic_revision_${TS}.log 2>/dev/null || true
+            fi
 
             # Restart service
             sudo systemctl restart mum-mentor-api
