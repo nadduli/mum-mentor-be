@@ -30,17 +30,15 @@ app.add_middleware(
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    formatted_errors = {}
+    formatted_errors = defaultdict(list)
 
     for err in exc.errors():
-        field = err["loc"][-1]
+        # Create a path from the location tuple, skipping the first part (e.g., 'body')
+        field = ".".join(map(str, err["loc"][1:]))
         message = err["msg"]
-
-        if field not in formatted_errors:
-            formatted_errors[field] = []
         formatted_errors[field].append(message)
 
-    return validation_error_response(formatted_errors)
+    return validation_error_response(dict(formatted_errors))
 
 app.include_router(api_v1_router, prefix="/api/v1")
 
