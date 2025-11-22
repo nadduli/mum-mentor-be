@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime, date, time, timezone
-from sqlalchemy import Boolean, String, Text, DateTime, Date, Time, ForeignKey, Integer, JSON
+from sqlalchemy import Boolean, String, Text, DateTime, Date, Time, ForeignKey, Integer, JSON, Enum as SAEnum, ARRAY
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from api.db.base_model import BaseModel, Base
+from api.v1.models.enums.enums import MomStatusEnum
+
 
 
 class User(BaseModel):
@@ -189,3 +191,26 @@ class EmailVerificationToken(BaseModel):
     used_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     user = relationship("User", back_populates="verification_tokens")
+
+
+class ChildProfile(BaseModel):
+    __tablename__ = "child_profile"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
+    profile_setup_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profile_setup.id"),nullable=False,index=True)
+    full_name: Mapped[str] = mapped_column(String(120),nullable=False)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(50),nullable=True)
+    profile_setup: Mapped["ProfileSetup"] = relationship(back_populates="children")
+
+
+class ProfileSetup(BaseModel):
+    __tablename__ = "profile_setup"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"),nullable=False,unique=True,index=True)
+    mom_status: Mapped[MomStatusEnum] = mapped_column(SAEnum(MomStatusEnum),nullable=False)
+    goals: Mapped[list[str]] = mapped_column(ARRAY(String),nullable=False)
+    partner: Mapped[dict | None] = mapped_column(JSON,nullable=True)
+    children: Mapped[list["ChildProfile"]] = relationship(back_populates="profile_setup",cascade="all, delete-orphan")
