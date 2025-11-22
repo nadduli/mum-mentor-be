@@ -17,22 +17,6 @@ def create_task(request: CreateTaskRequest, db: Session, current_user: User) -> 
     try:
         logger.info(f"Creating task for user {current_user.id}")
 
-        # Normalize input title
-        normalized_name = request.name.strip().lower()
-
-        # Duplicate prevention (case-insensitive + trimmed)
-        existing_task = db.query(Task).filter(
-            Task.user_id == current_user.id,
-            func.lower(func.trim(Task.name)) == normalized_name
-        ).first()
-
-        if existing_task:
-            logger.warning(f"Duplicate task title for user {current_user.id}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A task with this title already exists"
-            )
-
         # Create task
         task = Task(
             user_id=current_user.id,
