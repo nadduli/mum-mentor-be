@@ -1,5 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from api.v1.routes import app as api_v1_router
+from fastapi.exceptions import RequestValidationError
+from api.utils.responses import validation_error_response
 from api.v1.routes import app as api_v1_router
 
 import logging
@@ -24,6 +27,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    formatted_errors = {}
+
+    for err in exc.errors():
+        field = err["loc"][-1]
+        message = err["msg"]
+
+        if field not in formatted_errors:
+            formatted_errors[field] = []
+        formatted_errors[field].append(message)
+
+    return validation_error_response(formatted_errors)
 
 app.include_router(api_v1_router, prefix="/api/v1")
 
