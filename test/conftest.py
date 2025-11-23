@@ -1,19 +1,27 @@
 import pytest
+from pathlib import Path
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from unittest.mock import patch, AsyncMock
-from pathlib import Path
 import sys
 import os
 
+from dotenv import load_dotenv
 import uuid
 from datetime import datetime
 
 root_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(root_dir))
 
-os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL is None:
+    os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 os.environ["TESTING"] = "true"
 
 from main import app
@@ -22,7 +30,7 @@ from api.db.base_model import Base
 from api.v1.models.user.user import User, UserProfile
 from api.utils.security import hash_password
 # Setup test database
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+SQLALCHEMY_DATABASE_URL = DATABASE_URL or "sqlite:///./test.db"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )

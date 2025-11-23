@@ -20,7 +20,6 @@ class ChildCreate(BaseModel):
     gender: Optional[str] = None
 
 
-
 class PartnerInput(BaseModel):
     name: str
     email: EmailStr
@@ -34,7 +33,6 @@ class ProfileSetupSubmit(BaseModel):
     children: List[ChildCreate] = Field(default_factory=list)
 
 
-
 class ProfileSetupResponse(BaseModel):
     user_id: str
     mom_status: MomStatusEnum
@@ -43,3 +41,33 @@ class ProfileSetupResponse(BaseModel):
 
     children: List[dict]
     children_metadata: List[dict]
+
+
+class PartnerUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+
+
+class ChildUpdate(BaseModel):
+    full_name: str
+    date_of_birth: Optional[date] = None
+    due_date: Optional[date] = None
+    gender: Optional[str] = None
+
+
+class ProfileSetupUpdate(BaseModel):
+    """
+    Schema for PATCH requests.
+    All fields are optional to allow partial updates.
+    """
+
+    mom_status: Optional[MomStatusEnum] = None
+    goals: Optional[List[str]] = None
+    partner: Optional[PartnerUpdate] = None
+    children: Optional[List[ChildUpdate]] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"mom_status": "new_mom", "goals": ["Sleep", "Mental Wellness"]}
+        }
+    }
