@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,7 +10,7 @@ import uuid
 from main import app
 from api.db.database import get_db
 from api.db.base_model import Base
-from api.v1.models.user.user import User
+from api.v1.models.user.user import User, ProfileSetup, ChildProfile
 from api.utils.deps import get_current_user
 from api.utils.security import hash_password
 
@@ -83,8 +83,20 @@ def setup_database():
 
     Base.metadata.drop_all(bind=engine)
 
+@pytest.fixture(scope="function")
+def pre_existing_profile():
+    """Helper to create a profile BEFORE we try to update it"""
+    payload = {
+        "mom_status": "pregnant",
+        "goals": ["Sleep"],
+        "partner": {"name": "Dad", "email": "dad@test.com"},
+        "children": []
+    }
+    client.post("/api/v1/profile-setup/", json=payload)
+    return payload
 
-class TestCreateProfileSetup:
+
+class TestProfileSetup:
 
     def test_create_profile_setup_success(self):
         """Success: profile setup is created correctly"""
@@ -145,3 +157,104 @@ class TestCreateProfileSetup:
 
         data = response.json()
         assert "errors" in data["error"]
+
+    def test_get_profile_setup_success(self, setup_database):
+        """Success: returns the user's profile setup"""
+        db = TestingSessionLocal()
+        profile_setup = ProfileSetup(
+            user_id=TEST_USER_ID,
+            mom_status="toddler_mum",
+            goals=["sleep", "eat"],
+            partner={"name": "Test Partner", "email": "partner@example.com"},
+        )
+        db.add(profile_setup)
+        db.commit()
+
+        child = ChildProfile(
+            profile_setup_id=profile_setup.id,
+            full_name="Baby Doe",
+            date_of_birth=date(2023, 1, 15),
+            gender="F",
+        )
+        db.add(child)
+        db.commit()
+        db.close()
+
+        response = client.get("/api/v1/profile-setup/")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["message"] == "Profile setup retrieved successfully"
+        assert data["data"]["user_id"] == str(TEST_USER_ID)
+        assert data["data"]["mom_status"] == "toddler_mum"
+        assert data["data"]["goals"] == ["sleep", "eat"]
+        assert data["data"]["partner"]["name"] == "Test Partner"
+        assert data["data"]["partner"]["email"] == "partner@example.com"
+        assert len(data["data"]["children"]) == 1
+        assert data["data"]["children"][0]["full_name"] == "Baby Doe"
+        assert data["data"]["children"][0]["gender"] == "F"
+        assert data["data"]["children"][0]["date_of_birth"] == "2023-01-15"
+
+    def test_get_profile_setup_not_found(self, setup_database):
+        """Not Found: returns 404 if profile setup does not exist"""
+        response = client.get("/api/v1/profile-setup/")
+        assert response.status_code == 404
+        assert response.json()["message"] == "Profile setup not found"
+
+    def test_get_profile_setup_unauthorized(self, setup_database):
+        """Unauthorized: returns 401 if user is not authenticated"""
+        from fastapi import HTTPException
+
+        def raise_unauthorized():
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        app.dependency_overrides[get_current_user] = raise_unauthorized
+
+        response = client.get("/api/v1/profile-setup/")
+        assert response.status_code in (401, 403)
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+
+    def test_update_children_list(self, setup_database, pre_existing_profile):
+        """Test 2: Add a child (verify list replacement logic)"""
+
+        patch_payload = {
+            "children": [
+                {
+                    "full_name": "New Baby",
+                    "gender": "male",
+                    "date_of_birth": str(date.today())
+                }
+            ]
+        }
+
+        response = client.patch("/api/v1/profile-setup/", json=patch_payload)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]["children"]) == 1
+        assert data["data"]["children"][0]["full_name"] == "New Baby"
+
+        db = TestingSessionLocal()
+        count = db.query(ChildProfile).count()
+        assert count == 1
+        db.close()
+
+    def test_update_not_found(self, setup_database):
+        """Test 3: Try to update a profile that doesn't exist yet"""
+        patch_payload = {"mom_status": "mixed"}
+
+        response = client.patch("/api/v1/profile-setup/", json=patch_payload)
+
+        assert response.status_code == 404
+        assert "Profile setup not found" in response.json()["message"]
+
+    def test_remove_partner(self, setup_database, pre_existing_profile):
+        """Test 4: Explicitly remove the partner by sending null"""
+        patch_payload = {"partner": None}
+
+        response = client.patch("/api/v1/profile-setup/", json=patch_payload)
+
+        assert response.status_code == 200
+        assert response.json()["data"]["partner"] is None
