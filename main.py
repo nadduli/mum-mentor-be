@@ -1,8 +1,12 @@
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1.routes import app as api_v1_router
 
 import logging
+
+
+from api.utils.exception_handlers import (request_validation_exception_handler, http_exception_handler)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,6 +30,11 @@ app.add_middleware(
 )
 
 app.include_router(api_v1_router, prefix="/api/v1")
+
+
+# Register handlers
+app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
 
 
 @app.get("/")
