@@ -46,24 +46,26 @@ async def register_user(
     """
     logger.info("Registration attempt for email: %s", user_data.email)
     
-    user, error, verification_token = await UserService.create_user(db, user_data)
+    user, context, verification_token = await UserService.create_user(db, user_data)
     
-    if error:
+    if context:
         logger.warning(
             "Registration failed for %s: %s",
             user_data.email,
-            error,
+            context,
         )
         # Return 409 Conflict for already registered users
-        if error == "already_registered":
+        if context.get("is_registered") is True:
             return fail_response(
                 status_code=status.HTTP_409_CONFLICT,
-                message="Email already registered. Please login or reset your password if you forgot it."
+                message="Email already registered. Please login or reset your password if you forgot it.",
+                error=context
             )
         # Return 400 Bad Request for other errors
         return fail_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message=error
+            message=context.get("message", "An unknown error occurred during registration."),
+            error=context
         )
     
     if not user:
