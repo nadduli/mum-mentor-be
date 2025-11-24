@@ -1,9 +1,8 @@
 import uuid
 from datetime import datetime, date, time, timezone
-from sqlalchemy import Boolean, String, Text, DateTime, Date, Time, ForeignKey, Integer, JSON, Enum as SAEnum, ARRAY
+from sqlalchemy import Boolean, String, Text, DateTime, Date, Time, ForeignKey, Integer, JSON, ARRAY
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from api.db.base_model import BaseModel, Base
-from api.v1.models.enums.enums import MomStatusEnum
 
 
 
@@ -210,7 +209,7 @@ class ProfileSetup(BaseModel):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True,default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"),nullable=False,unique=True,index=True)
-    mom_status: Mapped[MomStatusEnum] = mapped_column(SAEnum(MomStatusEnum),nullable=False)
-    goals: Mapped[list[str]] = mapped_column(ARRAY(String),nullable=False)
+    mom_status: Mapped[str] = mapped_column(nullable=False)
+    goals: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     partner: Mapped[dict | None] = mapped_column(JSON,nullable=True)
     children: Mapped[list["ChildProfile"]] = relationship(back_populates="profile_setup",cascade="all, delete-orphan")
