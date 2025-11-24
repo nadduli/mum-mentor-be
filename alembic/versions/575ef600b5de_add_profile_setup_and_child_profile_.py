@@ -1,8 +1,8 @@
-"""Add profile_setup + child_profile tables
+"""Add profile_setup and child_profile tables
 
-Revision ID: 875d524bf108
+Revision ID: 575ef600b5de
 Revises: 313afcd4440e
-Create Date: 2025-11-22 02:05:28.054845
+Create Date: 2025-11-24 17:46:07.086403
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '875d524bf108'
+revision: str = '575ef600b5de'
 down_revision: Union[str, Sequence[str], None] = '313afcd4440e'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -24,8 +24,8 @@ def upgrade() -> None:
     op.create_table('profile_setup',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
-    sa.Column('mom_status', sa.Enum('pregnant', 'new_mom', 'toddler_mom', 'mixed', name='momstatusenum'), nullable=False),
-    sa.Column('goals', sa.ARRAY(sa.String()), nullable=False),
+    sa.Column('mom_status', sa.String(), nullable=False),
+    sa.Column('goals', sa.JSON(), nullable=False),
     sa.Column('partner', sa.JSON(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
