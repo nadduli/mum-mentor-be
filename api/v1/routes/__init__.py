@@ -24,6 +24,7 @@ from .task.edit_task import router as edit_task_router
 from .task.toggle_completion import router as toggle_completion_router
 from .task.delete_task import router as delete_task_router
 from .logout import router as logout_router
+from .chat import chat_router
 
 app = APIRouter()
 
@@ -57,3 +58,6 @@ app.include_router(user_settings_router)
 
 # Backwards-compatibility
 contact_router = app
+
+# delete chat route
+app.include_router(chat_router)
