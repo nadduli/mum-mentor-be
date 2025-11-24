@@ -1,8 +1,10 @@
 from uuid import UUID
 from typing import Optional, Tuple, List
 from datetime import datetime, timezone
+
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import nulls_last, asc
 
 from api.v1.models.task import Task
 from api.v1.models.user.user import User
@@ -16,22 +18,6 @@ def create_task(request: CreateTaskRequest, db: Session, current_user: User) -> 
 
     try:
         logger.info(f"Creating task for user {current_user.id}")
-
-        # Normalize input title
-        normalized_name = request.name.strip().lower()
-
-        # Duplicate prevention (case-insensitive + trimmed)
-        existing_task = db.query(Task).filter(
-            Task.user_id == current_user.id,
-            func.lower(func.trim(Task.name)) == normalized_name
-        ).first()
-
-        if existing_task:
-            logger.warning(f"Duplicate task title for user {current_user.id}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A task with this title already exists"
-            )
 
         # Create task
         task = Task(
@@ -82,42 +68,36 @@ class TaskService:
             return None
 
     def get_user_tasks(
-        self, 
-        user_id: UUID, 
-        page: int = 1, 
-        per_page: int = 10, 
-        status: Optional[str] = None
-    ) -> Tuple[List[Task], int]:
-        """
-        Retrieve paginated tasks for a user with optional status filter.
-        
-        Args:
-            user_id: UUID of the user
-            page: Page number (starts from 1)
-            per_page: Number of items per page
-            status: Optional status filter ('pending', 'completed')
-            
-        Returns:
-            Tuple of (tasks, total_count)
-        """
+            self,
+            user_id: UUID,
+            page: int = 1,
+            per_page: int = 10,
+            status: Optional[str] = None
+    ):
+
         try:
             query = self.db.query(Task).filter(Task.user_id == user_id)
-            
+
             if status:
                 query = query.filter(Task.status == status)
-            
-            # Get total count
+
+            query = query.order_by(nulls_last(asc(Task.due_date)))
+
             total_count = query.count()
-            
-            # Apply pagination
+
             offset = (page - 1) * per_page
             tasks = query.offset(offset).limit(per_page).all()
-            
+
             return tasks, total_count
-            
+
+        except SQLAlchemyError as db_err:
+            logger.error(f"[DB ERROR] retrieving tasks for user {user_id}: {db_err}")
+            raise
+
         except Exception as e:
-            logger.error(f"Error retrieving user tasks: {str(e)}")
-            return [], 0
+            logger.error(f"[UNEXPECTED ERROR] retrieving tasks for user {user_id}: {e}")
+            raise
+
 
     def toggle_completion(
         self, task_id: UUID, completed: bool, user_id: UUID
