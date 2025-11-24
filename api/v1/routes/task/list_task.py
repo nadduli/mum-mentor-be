@@ -15,7 +15,7 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 def list_tasks(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(10, ge=1, le=100, description="Items per page"),
-    task_status: Optional[str] = Query(
+    status: Optional[str] = Query(
         "pending", description="Filter by status: default is 'pending'"
     ),
     db: Session = Depends(get_db),
@@ -25,12 +25,12 @@ def list_tasks(
     Get paginated list of tasks for the current user with optional status filter.
     """
     logger.info(
-        f"Fetching tasks | user_id={current_user.id} | page={page} | per_page={per_page} | status={task_status}"
+        f"Fetching tasks | user_id={current_user.id} | page={page} | per_page={per_page} | status={status}"
     )
 
     try:
         # Validate status filter
-        if task_status and task_status not in ["pending", "completed"]:
+        if status and status not in ["pending", "completed"]:
             return fail_response(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 message="Invalid status filter",
@@ -43,7 +43,7 @@ def list_tasks(
             user_id=current_user.id,
             page=page,
             per_page=per_page,
-            status=task_status,
+            status=status,
         )
 
         # Prepare task response list
