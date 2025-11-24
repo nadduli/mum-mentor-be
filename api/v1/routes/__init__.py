@@ -24,7 +24,7 @@ from .task.edit_task import router as edit_task_router
 from .task.toggle_completion import router as toggle_completion_router
 from .task.delete_task import router as delete_task_router
 
-from .profile_setup.profile_setup import router as profile_setup_router
+from .profile_setup import router as profile_setup_router
 
 app = APIRouter()
 
