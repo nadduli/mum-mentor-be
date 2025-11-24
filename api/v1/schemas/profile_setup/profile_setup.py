@@ -13,12 +13,11 @@ class MomStatusEnum(str, Enum):
     mixed = "mixed"
 
 
-class ChildCreate(BaseModel):
+class ChildInput(BaseModel):
     full_name: str
     date_of_birth: Optional[date] = None
     due_date: Optional[date] = None
     gender: Optional[str] = None
-
 
 
 class PartnerInput(BaseModel):
@@ -28,18 +27,6 @@ class PartnerInput(BaseModel):
 
 class ProfileSetupSubmit(BaseModel):
     mom_status: MomStatusEnum
-    goals: List[str]
-
+    goals: list[str]
     partner: Optional[PartnerInput] = None
-    children: List[ChildCreate] = Field(default_factory=list)
-
-
-
-class ProfileSetupResponse(BaseModel):
-    user_id: str
-    mom_status: MomStatusEnum
-    goals: List[str]
-    partner: Optional[dict]
-
-    children: List[dict]
-    children_metadata: List[dict]
+    children: list[ChildInput] = []
