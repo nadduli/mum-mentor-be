@@ -24,6 +24,7 @@ from .task.edit_task import router as edit_task_router
 from .task.toggle_completion import router as toggle_completion_router
 from .task.delete_task import router as delete_task_router
 from .logout import router as logout_router
+from .ai_chat import router as ai_chat_router
 
 app = APIRouter()
 
@@ -54,6 +55,9 @@ app.include_router(user_profile_router)
 app.include_router(admin_router)
 app.include_router(faq_router)
 app.include_router(user_settings_router)
+
+# AI Chat routes
+app.include_router(ai_chat_router)
 
 # Backwards-compatibility
 contact_router = app
