@@ -17,7 +17,7 @@ def request_validation_exception_handler(
         context={"errors": exc.errors()}
     )
 
-def http_exception_handler(request: Request, exc: HTTPException):
+def http_exception_handler(_request: Request, exc: HTTPException) -> JSONResponse:
     """
     Override default HTTPException responses (e.g., raise HTTPException(...)).
     """
