@@ -59,13 +59,13 @@ async def register_user(
             return fail_response(
                 status_code=status.HTTP_409_CONFLICT,
                 message="Email already registered. Please login or reset your password if you forgot it.",
-                error=context
+                context=context
             )
         # Return 400 Bad Request for other errors
         return fail_response(
             status_code=status.HTTP_400_BAD_REQUEST,
             message=context.get("message", "An unknown error occurred during registration."),
-            error=context
+            context=context
         )
     
     if not user:
