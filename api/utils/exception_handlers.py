@@ -6,7 +6,7 @@ from api.utils.responses import fail_response
 
 
 def request_validation_exception_handler(
-    request: Request, exc: RequestValidationError
+    _request: Request, exc: RequestValidationError
 ) -> JSONResponse:
     """
     Override default Pydantic/FastAPI validation errors and make it conform to project-defined fail_response format.
