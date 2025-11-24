@@ -55,10 +55,10 @@ async def register_user(
             error,
         )
         # Return 409 Conflict for already registered users
-        if "already registered" in error.lower():
+        if error == "already_registered":
             return fail_response(
                 status_code=status.HTTP_409_CONFLICT,
-                message=error
+                message="Email already registered. Please login or reset your password if you forgot it."
             )
         # Return 400 Bad Request for other errors
         return fail_response(
