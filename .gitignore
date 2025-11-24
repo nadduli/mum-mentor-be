@@ -40,6 +40,9 @@ logs/
 tmp/
 temp/
 
+# Alembic migrations: generated on server only
+alembic/versions/
+
 # Test / Coverage
 .pytest_cache/
 .hypothesis/
@@ -61,3 +64,5 @@ docker-compose.yml
 docker-compose.*
 .dockerignore
 .docker/
+
+alembic/versions/*

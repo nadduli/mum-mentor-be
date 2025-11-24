@@ -52,6 +52,8 @@ jobs:
           pip install pytest pytest-asyncio httpx
           pytest -v || echo "No tests found yet"
 
+
+
   deploy-staging:
     name: Deploy to Staging (Auto)
     runs-on: [self-hosted, hng-13-runner]
@@ -92,7 +94,82 @@ jobs:
             . venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
+            
+            # --- IMPROVED migration block ---
+            LOCK_DIR="/tmp/deploy_migrations.lock"
+            TS=$(date +%Y%m%d_%H%M%S)
+            ALEMBIC_CONF="alembic.ini"
+            export ENVIRONMENT=staging  # or production for prod deployment
 
+            if [ ! -f "$ALEMBIC_CONF" ]; then
+              echo "No $ALEMBIC_CONF found, skipping migrations."
+            else
+              if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+                echo "Another deployment/migration is running — aborting to avoid conflicts.";
+                exit 1
+              fi
+              trap 'rm -rf "$LOCK_DIR"' EXIT
+
+              # Check current database state
+              DB_VERSION=$(sudo -u postgres psql -d mum_mentor_ai_staging -t -c "SELECT version_num FROM alembic_version LIMIT 1;" 2>/dev/null | xargs || echo "none")
+              
+              # If database references a missing migration, clean up
+              if [ "$DB_VERSION" != "none" ]; then
+                if [ ! -f alembic/versions/${DB_VERSION}_*.py ]; then
+                  echo "⚠️ Database references missing migration $DB_VERSION, cleaning up..."
+                  sudo -u postgres psql -d mum_mentor_ai_staging -c "DELETE FROM alembic_version;"
+                  rm -f alembic/versions/*.py
+                  touch alembic/versions/__init__.py
+                  DB_VERSION="none"
+                fi
+              fi
+
+              if [ "$DB_VERSION" = "none" ]; then
+                echo "Fresh migration state - generating initial schema..."
+                alembic revision --autogenerate -m "server_initial_${TS}"
+                alembic stamp head
+                echo "✅ Database stamped with initial schema"
+              else
+                echo "Database at version: $DB_VERSION"
+                echo "Checking for schema changes..."
+                
+                # Try to generate migration
+                alembic revision --autogenerate -m "auto_deploy_${TS}" 2>&1 | tee /tmp/alembic_revision_${TS}.log || true
+                
+                # Check if real changes were detected
+                if grep -q "No changes in schema detected\|Generating.*script" /tmp/alembic_revision_${TS}.log; then
+                  NEW_FILE=$(ls -t alembic/versions/*.py 2>/dev/null | head -1)
+                  if [ -f "$NEW_FILE" ]; then
+                    # Check if file has actual operations
+                    if grep -q "def upgrade():" "$NEW_FILE" && grep -A 50 "def upgrade():" "$NEW_FILE" | grep -q "op\."; then
+                      echo "✅ Schema changes detected, applying migration..."
+                      alembic upgrade head
+                    else
+                      echo "ℹ️ Empty migration created, removing..."
+                      rm "$NEW_FILE"
+                    fi
+                  else
+                    echo "✅ No schema changes detected"
+                  fi
+                fi
+                
+                # Check for multiple heads and merge if needed
+                HEADS=$(alembic heads --verbose 2>/dev/null | awk '/^[0-9a-f]{7,40}/ {print $1}' | tr '\n' ' ' | sed 's/ $//' || true)
+                if [ -n "$HEADS" ]; then
+                  HEAD_COUNT=$(echo "$HEADS" | wc -w)
+                  if [ "$HEAD_COUNT" -gt 1 ]; then
+                    echo "⚠️ Multiple heads detected: $HEADS - Merging..."
+                    alembic merge -m "merge_auto_${TS}" $HEADS
+                    alembic upgrade head
+                    echo "✅ Merged and applied"
+                  fi
+                fi
+              fi
+
+              rm -f /tmp/alembic_revision_${TS}.log 2>/dev/null || true
+              echo "Current migration:"
+              alembic current
+            fi
 
             # Restart service
             sudo systemctl restart mum-mentor-api-staging
@@ -147,6 +224,82 @@ jobs:
             . venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
+            
+            # --- IMPROVED migration block (production) ---
+            LOCK_DIR="/tmp/deploy_migrations.lock"
+            TS=$(date +%Y%m%d_%H%M%S)
+            ALEMBIC_CONF="alembic.ini"
+            export ENVIRONMENT=production  # or staging for staging deployment
+
+            if [ ! -f "$ALEMBIC_CONF" ]; then
+              echo "No $ALEMBIC_CONF found, skipping migrations."
+            else
+              if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+                echo "Another deployment/migration is running — aborting to avoid conflicts.";
+                exit 1
+              fi
+              trap 'rm -rf "$LOCK_DIR"' EXIT
+
+              # Check current database state
+              DB_VERSION=$(sudo -u postgres psql -d mum_mentor_ai -t -c "SELECT version_num FROM alembic_version LIMIT 1;" 2>/dev/null | xargs || echo "none")
+              
+              # If database references a missing migration, clean up
+              if [ "$DB_VERSION" != "none" ]; then
+                if [ ! -f alembic/versions/${DB_VERSION}_*.py ]; then
+                  echo "⚠️ Database references missing migration $DB_VERSION, cleaning up..."
+                  sudo -u postgres psql -d mum_mentor_ai_prod -c "DELETE FROM alembic_version;"
+                  rm -f alembic/versions/*.py
+                  touch alembic/versions/__init__.py
+                  DB_VERSION="none"
+                fi
+              fi
+
+              if [ "$DB_VERSION" = "none" ]; then
+                echo "Fresh migration state - generating initial schema..."
+                alembic revision --autogenerate -m "server_initial_${TS}"
+                alembic stamp head
+                echo "✅ Database stamped with initial schema"
+              else
+                echo "Database at version: $DB_VERSION"
+                echo "Checking for schema changes..."
+                
+                # Try to generate migration
+                alembic revision --autogenerate -m "auto_deploy_${TS}" 2>&1 | tee /tmp/alembic_revision_${TS}.log || true
+                
+                # Check if real changes were detected
+                if grep -q "No changes in schema detected\|Generating.*script" /tmp/alembic_revision_${TS}.log; then
+                  NEW_FILE=$(ls -t alembic/versions/*.py 2>/dev/null | head -1)
+                  if [ -f "$NEW_FILE" ]; then
+                    # Check if file has actual operations
+                    if grep -q "def upgrade():" "$NEW_FILE" && grep -A 50 "def upgrade():" "$NEW_FILE" | grep -q "op\."; then
+                      echo "✅ Schema changes detected, applying migration..."
+                      alembic upgrade head
+                    else
+                      echo "ℹ️ Empty migration created, removing..."
+                      rm "$NEW_FILE"
+                    fi
+                  else
+                    echo "✅ No schema changes detected"
+                  fi
+                fi
+                
+                # Check for multiple heads and merge if needed
+                HEADS=$(alembic heads --verbose 2>/dev/null | awk '/^[0-9a-f]{7,40}/ {print $1}' | tr '\n' ' ' | sed 's/ $//' || true)
+                if [ -n "$HEADS" ]; then
+                  HEAD_COUNT=$(echo "$HEADS" | wc -w)
+                  if [ "$HEAD_COUNT" -gt 1 ]; then
+                    echo "⚠️ Multiple heads detected: $HEADS - Merging..."
+                    alembic merge -m "merge_auto_${TS}" $HEADS
+                    alembic upgrade head
+                    echo "✅ Merged and applied"
+                  fi
+                fi
+              fi
+
+              rm -f /tmp/alembic_revision_${TS}.log 2>/dev/null || true
+              echo "Current migration:"
+              alembic current
+            fi
 
             # Restart service
             sudo systemctl restart mum-mentor-api

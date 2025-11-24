@@ -23,6 +23,7 @@ from .task.create_task import router as create_task_router
 from .task.edit_task import router as edit_task_router
 from .task.toggle_completion import router as toggle_completion_router
 from .task.delete_task import router as delete_task_router
+from .logout import router as logout_router
 
 app = APIRouter()
 
@@ -38,6 +39,7 @@ app.include_router(reset_password_router)
 app.include_router(google_auth_router)
 app.include_router(delete_account_router)
 app.include_router(validate_token_router)
+app.include_router(logout_router)
 
 # Task routes 
 app.include_router(create_task_router)
