@@ -64,8 +64,8 @@ def validation_error_response(errors: dict):
     response = {
         "error": "VALIDATION_ERROR",
         "message": "The request contains invalid fields",
-        "status_code": 400,
+        "status_code": 422,
         "errors": errors,
     }
 
-    return JSONResponse(status_code=400, content=jsonable_encoder(response))
+    return JSONResponse(status_code=422, content=jsonable_encoder(response))

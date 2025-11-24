@@ -24,7 +24,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     response_description="User registration data",
     responses={
         201: {"description": "User successfully registered"},
-        400: {"description": "Invalid input or validation error"},
+        422: {"description": "Invalid input or validation error"},
         409: {"description": "Email already registered"},
         500: {"description": "Internal server error"}
     }
