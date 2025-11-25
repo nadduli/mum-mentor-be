@@ -20,6 +20,8 @@ from .chats import chat_router
 from .ai_chat import router as ai_chat_router
 from .profile_setup import router as profile_setup_router
 
+from .milestone import router as milestone_router
+
 app = APIRouter()
 
 # Authentication routes
@@ -52,3 +54,6 @@ app.include_router(user_settings_router)
 
 # Backwards-compatibility
 contact_router = app
+
+# milestone router 
+app.include_router(milestone_router)
