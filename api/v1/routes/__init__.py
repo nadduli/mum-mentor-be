@@ -16,7 +16,6 @@ from .task.edit_task import router as edit_task_router
 from .task.toggle_completion import router as toggle_completion_router
 from .task.delete_task import router as delete_task_router
 
-from .chats import chat_router
 from .ai_chat import router as ai_chat_router
 from .profile_setup import router as profile_setup_router
 from .album import album_router
@@ -42,8 +41,6 @@ app.include_router(profile_setup_router)
 # Album routes
 app.include_router(album_router)
 
-# Chat routes (The Master Router from /chats folder)
-app.include_router(chat_router)
 
 # AI Chat routes
 app.include_router(ai_chat_router)
