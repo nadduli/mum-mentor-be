@@ -6,7 +6,7 @@ from typing import Any
 from api.v1.schemas.admin import AdminCreate, AdminOut
 from api.db.database import get_db
 from api.v1.services.admin_service import create_admin
-from api.v1.routes.auth.deps import require_super_admin
+from api.v1.routes.deps import require_super_admin
 from api.utils.responses import success_response, fail_response
 
 logger = logging.getLogger(__name__)
