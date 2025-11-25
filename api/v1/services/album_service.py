@@ -36,3 +36,45 @@ class AlbumService:
         album = result.unique().scalar_one_or_none()
 
         return album
+
+    def list_albums_with_thumbnail(self, user_id: uuid.UUID, prefer_last: bool = True) -> list:
+        """
+        List albums for a user and include a thumbnail image (first or last uploaded photo).
+
+        Args:
+            user_id: UUID of the owner
+            prefer_last: if True use the most recent memory, otherwise use the oldest
+
+        Returns:
+            List of dicts with album and `last_image` (image_url or None)
+        """
+        albums = self.db.query(Album).filter(Album.user_id == user_id).order_by(Album.created_at.desc()).all()
+
+        results = []
+        for album in albums:
+            # get the memory entry (first or last)
+            order = Memory.saved_on.desc() if prefer_last else Memory.saved_on.asc()
+            last_memory = (
+                self.db.query(Memory)
+                .filter(Memory.album_id == album.id)
+                .order_by(order)
+                .limit(1)
+                .first()
+            )
+
+            last_image = None
+            if last_memory and last_memory.photo:
+                photo = self.db.query(Photos).filter(Photos.id == last_memory.photo).first()
+                if photo:
+                    last_image = photo.image_url
+
+            results.append({
+                "id": album.id,
+                "name": album.name,
+                "user_id": album.user_id,
+                "created_at": album.created_at,
+                "updated_at": album.updated_at,
+                "last_image": last_image,
+            })
+
+        return results

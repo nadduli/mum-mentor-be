@@ -36,3 +36,26 @@ class AlbumWithMemoriesResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AlbumListItem(BaseModel):
+    """Schema for album listing with thumbnail"""
+    id: UUID
+    name: str
+    user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+    last_image: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class RenameAlbumRequest(BaseModel):
+    """Schema for renaming an album"""
+    name: str
+
+    class Config:
+        schema_extra = {
+            "example": {"name": "My Updated Album Name"}
+        }

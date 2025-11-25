@@ -8,7 +8,8 @@ from api.utils.logger import logger
 from api.utils.responses import success_response, fail_response
 from api.v1.models.user.user import User
 from api.v1.services.album_service import AlbumService
-from api.v1.schemas.album import AlbumWithMemoriesResponse
+from api.v1.schemas.album import AlbumWithMemoriesResponse, AlbumListItem, RenameAlbumRequest
+from typing import List
 
 album_router = APIRouter(prefix="/albums", tags=["Albums"])
 
@@ -56,4 +57,30 @@ def get_album_with_memories(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while retrieving the album"
+        )
+
+@album_router.get("/", response_model=List[AlbumListItem])
+def list_albums(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    List albums for the authenticated user, including a thumbnail image (first or last uploaded).
+    """
+    logger.info(f"Listing albums for user {current_user.id}")
+
+    try:
+        album_service = AlbumService(db)
+        albums = album_service.list_albums_with_thumbnail(current_user.id, prefer_last=True)
+        return success_response(
+            status_code=status.HTTP_200_OK,
+            message="User albums",
+            data=albums
+        )
+
+    except Exception as e:
+        logger.error(f"Error listing albums for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while listing albums"
         )
