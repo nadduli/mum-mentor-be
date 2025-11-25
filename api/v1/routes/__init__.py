@@ -19,6 +19,7 @@ from .task.delete_task import router as delete_task_router
 from .ai_chat import router as ai_chat_router
 from .profile_setup import router as profile_setup_router
 from .album import album_router
+from .albums import router as album_router
 
 app = APIRouter()
 
@@ -44,6 +45,9 @@ app.include_router(album_router)
 
 # AI Chat routes
 app.include_router(ai_chat_router)
+
+# Album routes
+app.include_router(album_router)
 
 # Other routes
 app.include_router(user_profile_router)
