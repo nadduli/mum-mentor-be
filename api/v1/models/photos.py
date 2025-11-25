@@ -10,5 +10,6 @@ class Photos(BaseModel):
     image_url: Mapped[str] = mapped_column(String(200))
 
     # Relationships
-    memories = relationship("Memory", back_populates="photo_data")
+    # If a Photo is deleted, cascade delete associated Memory records
+    memories = relationship("Memory", back_populates="photo_data", cascade="all, delete")
     

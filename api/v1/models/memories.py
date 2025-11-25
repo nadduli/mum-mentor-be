@@ -17,5 +17,7 @@ class Memory(BaseModel):
     )
 
     # Relationships
-    album = relationship("Album", back_populates="memories")
-    photo_data = relationship("Photos", back_populates="memories")
+    # When an Album is deleted, cascade-delete its memories
+    album = relationship("Album", back_populates="memories", cascade="all, delete")
+    # When a Photo is deleted, cascade-delete associated memories
+    photo_data = relationship("Photos", back_populates="memories", cascade="all, delete")
