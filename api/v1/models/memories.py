@@ -16,6 +16,5 @@ class Memory(BaseModel):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
-    # Relationships
-    album = relationship("Album", back_populates="memories")
-    photo_data = relationship("Photos", back_populates="memories")
+    album = relationship("Album", back_populates="memories", cascade="all, delete")
+    photo_data = relationship("Photos", back_populates="memories", cascade="all, delete")
