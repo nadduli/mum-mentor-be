@@ -48,7 +48,7 @@ class UserRegistrationRequest(BaseModel):
             raise ValueError('Name cannot be empty or only whitespace')
         if not NAME_PATTERN.match(v):
             raise ValueError('Name can only contain letters, spaces, hyphens, and apostrophes')
-        return v.strip()
+        return ' '.join(v.split())
 
     model_config = {
         "json_schema_extra": {

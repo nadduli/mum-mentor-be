@@ -16,7 +16,7 @@ class UserService:
     async def create_user(
         db: Session,
         user_data: UserRegistrationRequest
-    ) -> Tuple[Optional[User], Optional[str], Optional[str]]:
+    ) -> Tuple[Optional[User], Optional[dict], Optional[str]]:
         """
         Create a new user account
         
@@ -31,54 +31,12 @@ class UserService:
         """
         try:
             existing_user = User.fetch_unique(db, email=user_data.email.lower())
-            
-            if existing_user:
-                # Allow re-registration if email is NOT verified
-                if not existing_user.email_verified:
-                    logger.info(
-                        "Re-registration for unverified email: %s",
-                        user_data.email,
-                    )
-                    
-                    # Update existing user with new data
-                    existing_user.full_name = user_data.full_name.strip()
-                    existing_user.password_hash = hash_password(user_data.password)
-                    existing_user.updated_at = datetime.now(timezone.utc)
-                    
-                    # Invalidate old verification tokens
-                    success, invalidate_error = EmailVerificationService.invalidate_old_tokens(db, str(existing_user.id))
-                    if not success:
-                        db.rollback()
-                        logger.error("Failed to invalidate old verification tokens for: %s. Error: %s", user_data.email, invalidate_error)
-                        return None, "Failed to invalidate old verification tokens", None
-                    
-                    # Generate new OTP
-                    verification_token_record, error = EmailVerificationService.create_verification_record(
-                        db, str(existing_user.id)
-                    )
-                    
-                    if error or not verification_token_record:
-                        db.rollback()
-                        logger.error("Failed to create verification token for: %s", user_data.email)
-                        return None, "Failed to generate verification code", None
-                    
-                    # Commit all changes atomically
-                    db.commit()
-                    db.refresh(existing_user)
-                    db.refresh(verification_token_record)
-                    
-                    token = verification_token_record.token
-                    logger.info("User data updated and new verification code generated: %s", existing_user.email)
-                    return existing_user, None, token
-                
-                # Block registration if email IS verified - Return 409 status code
-                else:
-                    logger.warning(
-                        "Registration attempt with verified email: %s",
-                        user_data.email,
-                    )
-                    return None, "Email already registered. Please login or reset your password if you forgot it.", None
-            
+            context = {}
+            if existing_user is not None:
+                context["is_registered"] = True
+                context["is_email_verified"] = existing_user.email_verified
+                return existing_user, context, None
+              
             # Create new user if email doesn't exist
             new_user = User(
                 full_name=user_data.full_name.strip(),
@@ -98,7 +56,7 @@ class UserService:
             if error or not verification_token_record:
                 db.rollback()
                 logger.error("Failed to create verification token for new user: %s", user_data.email)
-                return None, "Failed to generate verification code", None
+                return None, {"message": "Failed to generate verification code"}, None
             
             # Commit all changes atomically
             db.commit()
@@ -106,7 +64,6 @@ class UserService:
             db.refresh(verification_token_record)
             
             token = verification_token_record.token
-            
             logger.info("User registered successfully: %s", new_user.email)
             return new_user, None, token
             
@@ -116,7 +73,7 @@ class UserService:
                 "Database integrity error during registration for email: %s",
                 user_data.email,
             )
-            return None, "User already exists", None
+            return None, {"message": "User already exists"}, None
         except Exception as e:
             db.rollback()
             logger.error(
@@ -125,4 +82,4 @@ class UserService:
                 str(e),
                 exc_info=True,
             )
-            return None, "An error occurred while creating the account", None
+            return None, {"message": "An error occurred while creating the account"}, None
