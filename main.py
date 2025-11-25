@@ -1,8 +1,15 @@
-from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from api.utils.responses import validation_error_response
 from api.v1.routes import app as api_v1_router
+from collections import defaultdict
 
 import logging
+
+
+from api.utils.exception_handlers import (request_validation_exception_handler, http_exception_handler)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,7 +32,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    formatted_errors = defaultdict(list)
+
+    for err in exc.errors():
+        # Create a path from the location tuple, skipping the first part (e.g., 'body')
+        field = ".".join(map(str, err["loc"][1:]))
+        message = err["msg"]
+        formatted_errors[field].append(message)
+
+    return validation_error_response(dict(formatted_errors))
+
 app.include_router(api_v1_router, prefix="/api/v1")
+
+
+# Register handlers
+app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
 
 
 @app.get("/")

@@ -23,6 +23,9 @@ from .task.create_task import router as create_task_router
 from .task.edit_task import router as edit_task_router
 from .task.toggle_completion import router as toggle_completion_router
 from .task.delete_task import router as delete_task_router
+from .logout import router as logout_router
+from .ai_chat import router as ai_chat_router
+from .chats import chat_router
 
 from .profile_setup import router as profile_setup_router
 
@@ -40,6 +43,7 @@ app.include_router(reset_password_router)
 app.include_router(google_auth_router)
 app.include_router(delete_account_router)
 app.include_router(validate_token_router)
+app.include_router(logout_router)
 
 # Task routes 
 app.include_router(create_task_router)
@@ -50,12 +54,18 @@ app.include_router(delete_task_router)
 
 # Profile Setup routes
 app.include_router(profile_setup_router)
+# Chat routes
+app.include_router(chat_router)
+
 
 # Other routes
 app.include_router(user_profile_router)
 app.include_router(admin_router)
 app.include_router(faq_router)
 app.include_router(user_settings_router)
+
+# AI Chat routes
+app.include_router(ai_chat_router)
 
 # Backwards-compatibility
 contact_router = app
