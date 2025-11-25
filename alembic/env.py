@@ -17,6 +17,8 @@ from api.v1.models.task import *
 from api.v1.models.blacklist import *
 from api.v1.models.chat_session import *
 from api.v1.models.chat_message import *
+from api.v1.models.chat_session import ChatSession
+from api.v1.models.chat_message import ChatMessage
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
