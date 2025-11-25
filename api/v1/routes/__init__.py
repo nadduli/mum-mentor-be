@@ -27,6 +27,8 @@ from .logout import router as logout_router
 from .ai_chat import router as ai_chat_router
 from .chats import chat_router
 
+from .profile_setup import router as profile_setup_router
+
 app = APIRouter()
 
 # Authentication routes
@@ -50,6 +52,8 @@ app.include_router(edit_task_router)
 app.include_router(toggle_completion_router)
 app.include_router(delete_task_router)
 
+# Profile Setup routes
+app.include_router(profile_setup_router)
 # Chat routes
 app.include_router(chat_router)
 
