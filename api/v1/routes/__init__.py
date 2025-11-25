@@ -25,6 +25,7 @@ from .task.toggle_completion import router as toggle_completion_router
 from .task.delete_task import router as delete_task_router
 from .logout import router as logout_router
 from .ai_chat import router as ai_chat_router
+from .chats import chat_router
 
 app = APIRouter()
 
@@ -48,6 +49,9 @@ app.include_router(task_list_router)
 app.include_router(edit_task_router)
 app.include_router(toggle_completion_router)
 app.include_router(delete_task_router)
+
+# Chat routes
+app.include_router(chat_router)
 
 
 # Other routes
