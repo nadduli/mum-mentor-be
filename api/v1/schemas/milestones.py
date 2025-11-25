@@ -52,3 +52,14 @@ class ListMilestonesResponse(BaseModel):
     message: str
     success: bool
     data: ListMilestonesData
+
+
+class MilestoneSummary(BaseModel):
+    completed_milestones: int
+    created_milestones: int
+
+
+class MilestoneSummaryResponse(BaseModel):
+    message: str
+    success: bool
+    data: MilestoneSummary

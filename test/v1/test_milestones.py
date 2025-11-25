@@ -1,5 +1,6 @@
 import pytest
 from uuid import uuid4
+from datetime import datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -55,6 +56,7 @@ def test_milestones(
         description="Test Description 1",
         category_id=test_milestone_category.id,
         status="pending",
+        created_at=datetime.utcnow() - timedelta(days=2),
     )
     milestone2 = Milestone(
         id=uuid4(),
@@ -64,6 +66,8 @@ def test_milestones(
         description="Test Description 2",
         category_id=test_milestone_category.id,
         status="completed",
+        created_at=datetime.utcnow() - timedelta(days=3),
+        updated_at=datetime.utcnow() - timedelta(hours=12),
     )
     db_session.add_all([milestone1, milestone2])
     db_session.commit()
@@ -79,7 +83,7 @@ def test_get_milestones_by_category_pending(
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["success"] is True
+    assert data["status"] == "success"
     assert data["data"]["category"]["id"] == str(category_id)
     assert len(data["data"]["milestones"]) == 1
     assert data["data"]["milestones"][0]["name"] == "Test Milestone 1"
@@ -96,7 +100,7 @@ def test_get_milestones_by_category_completed(
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["success"] is True
+    assert data["status"] == "success"
     assert data["data"]["category"]["id"] == str(category_id)
     assert len(data["data"]["milestones"]) == 1
     assert data["data"]["milestones"][0]["name"] == "Test Milestone 2"
@@ -151,3 +155,21 @@ def test_get_milestones_pagination(
     assert len(data["milestones"]) == 6
     assert data["pagination"]["next_cursor"] is None
     assert data["pagination"]["prev_cursor"] == "1"
+
+
+def test_get_milestone_summary(authorized_client, test_milestones):
+    response = authorized_client.get("/api/v1/milestones/summary")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["created_milestones"] == 2
+    assert data["data"]["completed_milestones"] == 1
+
+
+def test_get_milestone_summary_with_duration(authorized_client, test_milestones):
+    response = authorized_client.get("/api/v1/milestones/summary?duration=day")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["created_milestones"] == 0
+    assert data["data"]["completed_milestones"] == 1 

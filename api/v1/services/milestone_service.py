@@ -1,5 +1,6 @@
 import uuid
 from typing import Optional
+from datetime import datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -15,6 +16,7 @@ from api.v1.schemas.milestones import (
     Pagination,
     MilestoneCategoryStats,
     Milestone as MilestoneSchema,
+    MilestoneSummary,
 )
 
 
@@ -100,4 +102,49 @@ class MilestoneService:
                 prev_cursor=str(page - 1) if page > 1 else None,
                 per_page=limit,
             ),
+        )
+
+    @staticmethod
+    def get_milestone_summary(
+        db: Session,
+        user_id: uuid.UUID,
+        child_id: Optional[uuid.UUID] = None,
+        duration: str = "week",
+    ) -> MilestoneSummary:
+        
+        owner_id = child_id if child_id else user_id
+        owner_type = "child" if child_id else "mother"
+
+        now = datetime.utcnow()
+        if duration == "week":
+            start_date = now - timedelta(weeks=1)
+        elif duration == "month":
+            start_date = now - timedelta(days=30)
+        elif duration == "day":
+            start_date = now - timedelta(days=1)
+        elif duration == "year":
+            start_date = now - timedelta(days=365)
+        else:
+            start_date = now - timedelta(weeks=1)
+
+        created_milestones = db.scalar(
+            select(func.count(MilestoneModel.id)).where(
+                MilestoneModel.owner_id == owner_id,
+                MilestoneModel.owner_type == owner_type,
+                MilestoneModel.created_at >= start_date,
+            )
+        )
+
+        completed_milestones = db.scalar(
+            select(func.count(MilestoneModel.id)).where(
+                MilestoneModel.owner_id == owner_id,
+                MilestoneModel.owner_type == owner_type,
+                MilestoneModel.status == "completed",
+                MilestoneModel.updated_at >= start_date,
+            )
+        )
+
+        return MilestoneSummary(
+            created_milestones=created_milestones,
+            completed_milestones=completed_milestones,
         )
