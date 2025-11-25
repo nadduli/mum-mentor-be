@@ -16,7 +16,7 @@ class UserService:
     async def create_user(
         db: Session,
         user_data: UserRegistrationRequest
-    ) -> Tuple[Optional[User], Optional[str], Optional[str]]:
+    ) -> Tuple[Optional[User], Optional[dict], Optional[str]]:
         """
         Create a new user account
         
@@ -31,9 +31,11 @@ class UserService:
         """
         try:
             existing_user = User.fetch_unique(db, email=user_data.email.lower())
-            
-            if existing_user:
-                return existing_user, "already_registered", None
+            context = {}
+            if existing_user is not None:
+                context["is_registered"] = True
+                context["is_email_verified"] = existing_user.email_verified
+                return existing_user, context, None
               
             # Create new user if email doesn't exist
             new_user = User(
@@ -54,7 +56,7 @@ class UserService:
             if error or not verification_token_record:
                 db.rollback()
                 logger.error("Failed to create verification token for new user: %s", user_data.email)
-                return None, "Failed to generate verification code", None
+                return None, {"message": "Failed to generate verification code"}, None
             
             # Commit all changes atomically
             db.commit()
@@ -62,7 +64,6 @@ class UserService:
             db.refresh(verification_token_record)
             
             token = verification_token_record.token
-            
             logger.info("User registered successfully: %s", new_user.email)
             return new_user, None, token
             
@@ -72,7 +73,7 @@ class UserService:
                 "Database integrity error during registration for email: %s",
                 user_data.email,
             )
-            return None, "User already exists", None
+            return None, {"message": "User already exists"}, None
         except Exception as e:
             db.rollback()
             logger.error(
@@ -81,4 +82,4 @@ class UserService:
                 str(e),
                 exc_info=True,
             )
-            return None, "An error occurred while creating the account", None
+            return None, {"message": "An error occurred while creating the account"}, None
