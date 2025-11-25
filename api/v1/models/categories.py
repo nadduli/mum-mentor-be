@@ -7,7 +7,7 @@ from api.db.base_model import BaseModel
 
 
 class Category(BaseModel):
-    _tablename_ = "categories"
+    __tablename__ = "categories"
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, default=uuid.uuid4
