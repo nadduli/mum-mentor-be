@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import String, Text, DateTime, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from api.db.base_model import BaseModel
 
 
@@ -15,3 +15,7 @@ class Memory(BaseModel):
     saved_on: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+    # Relationships
+    album = relationship("Album", back_populates="memories")
+    photo_data = relationship("Photos", back_populates="memories")
