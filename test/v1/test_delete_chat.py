@@ -64,7 +64,7 @@ def test_delete_conversation_success(client, test_user, user_chat):
     Requirement: When a valid conversation ID is provided, 
     the conversation is successfully deleted.
     """
-    response = client.delete(f"/api/v1/chat/conversations/{user_chat}")
+    response = client.delete(f"/api/v1/ai-chat/conversations/{user_chat}")
 
     assert response.status_code == 200
     assert response.json()["message"] == "Conversation deleted"
@@ -81,7 +81,7 @@ def test_delete_conversation_not_found(client, test_user):
     """
     random_id = uuid.uuid4()
     
-    response = client.delete(f"/api/v1/chat/conversations/{random_id}")
+    response = client.delete(f"/api/v1/ai-chat/conversations/{random_id}")
 
     assert response.status_code == 404
     assert response.json()["message"] == "Conversation not found"
@@ -90,10 +90,10 @@ def test_delete_conversation_idempotency(client, test_user, user_chat):
     """
     Requirement: Repeating delete returns 404 after first deletion.
     """
-    response_1 = client.delete(f"/api/v1/chat/conversations/{user_chat}")
+    response_1 = client.delete(f"/api/v1/ai-chat/conversations/{user_chat}")
     assert response_1.status_code == 200
 
-    response_2 = client.delete(f"/api/v1/chat/conversations/{user_chat}")
+    response_2 = client.delete(f"/api/v1/ai-chat/conversations/{user_chat}")
     assert response_2.status_code == 404
     assert response_2.json()["message"] == "Conversation not found"
 
@@ -114,7 +114,7 @@ def test_delete_other_users_chat(client, test_user):
     other_chat_id = other_chat.id
     db.close()
 
-    response = client.delete(f"/api/v1/chat/conversations/{other_chat_id}")
+    response = client.delete(f"/api/v1/ai-chat/conversations/{other_chat_id}")
 
     assert response.status_code == 404
     assert response.json()["message"] == "Conversation not found"
