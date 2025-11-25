@@ -12,3 +12,6 @@ class Memory(BaseModel):
     album_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("albums.id"), nullable=False)
     photo: Mapped[uuid.UUID] = mapped_column(ForeignKey("photos.id"), nullable=False) 
     note: Mapped[str] = mapped_column(String(250))
+    saved_on: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
