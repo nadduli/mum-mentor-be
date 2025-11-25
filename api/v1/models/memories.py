@@ -16,8 +16,5 @@ class Memory(BaseModel):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
-    # Relationships
-    # When an Album is deleted, cascade-delete its memories
     album = relationship("Album", back_populates="memories", cascade="all, delete")
-    # When a Photo is deleted, cascade-delete associated memories
     photo_data = relationship("Photos", back_populates="memories", cascade="all, delete")
