@@ -16,7 +16,7 @@ def list_tasks(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(10, ge=1, le=100, description="Items per page"),
     task_status: Optional[str] = Query(  # CHANGED: status -> task_status
-        "pending", description="Filter by status: default is 'pending'"
+        None , description="Filter by status"
     ),
     order_by: Optional[str] = Query(
         "due_date", description="Field to order by: due_date, created_at, updated_at, name, status"
