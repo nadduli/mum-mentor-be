@@ -4,10 +4,10 @@ import uuid
 
 from api.db.database import get_db
 from api.utils.deps import get_current_user
-from api.v1.models.user.user import User
-from api.v1.services.chat.chat_service import ChatService
 from api.utils.logger import logger
 from api.utils.responses import success_response, fail_response
+from api.v1.models.user.user import User
+from api.v1.services.chat.chat_service import ChatService
 
 router = APIRouter(prefix="/chats", tags=["AI Chat"])
 
