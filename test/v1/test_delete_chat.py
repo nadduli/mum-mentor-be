@@ -12,7 +12,7 @@ from api.v1.models.user.user import User
 
 from api.v1.models.chat_session import ChatSession
 from api.v1.models.chat_message import ChatMessage
-from api.v1.dependencies.auth import get_current_user
+from api.utils.deps import get_current_user
 
 TEST_DATABASE_URL = "sqlite:///./test_chat_delete.db"
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
