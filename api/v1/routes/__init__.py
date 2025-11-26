@@ -9,6 +9,7 @@ from .user_profile import router as user_profile_router
 from .admin import router as admin_router
 from .faq import router as faq_router
 from .user_settings import router as user_settings_router
+from .memories import router as memories_router
 
 from .task.list_task import router as task_list_router
 from .task.create_task import router as create_task_router
@@ -26,7 +27,10 @@ from .child_profile.upload_picture import router as upload_child_picture_router
 
 from .ai_chat import router as ai_chat_router
 from .profile_setup import router as profile_setup_router
+from .album import album_router
+from .albums import router as album_router
 
+from .album_memories import router as album_memories_router
 from .milestone import router as milestone_router
 
 app = APIRouter()
@@ -40,8 +44,8 @@ app.include_router(delete_account_router)
 # Task routes 
 app.include_router(create_task_router)
 app.include_router(task_list_router)
-app.include_router(edit_task_router)
 app.include_router(toggle_completion_router)
+app.include_router(edit_task_router)
 app.include_router(delete_task_router)
 
 # Child Profile routes
@@ -55,15 +59,23 @@ app.include_router(upload_child_picture_router)
 # Profile Setup routes
 app.include_router(profile_setup_router)
 
+# Album routes
+app.include_router(album_router)
+
 
 # AI Chat routes
 app.include_router(ai_chat_router)
+
+# Album routes
+app.include_router(album_router)
 
 # Other routes
 app.include_router(user_profile_router)
 app.include_router(admin_router)
 app.include_router(faq_router)
 app.include_router(user_settings_router)
+app.include_router(album_memories_router)
+app.include_router(memories_router)
 
 # Backwards-compatibility
 contact_router = app
