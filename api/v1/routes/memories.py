@@ -71,7 +71,7 @@ def delete_memory_endpoint(
 	"""Delete one of the authenticated user's memories by ID."""
 
 	service = MemoriesService(db)
-	deleted, error = service.delete_memory(memory_id=memory_id)
+	deleted, error = service.delete_memory(memory_id=memory_id, user_id=current_user.id)
 
 	if error:
 		status_code, message = error
