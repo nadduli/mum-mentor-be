@@ -27,3 +27,4 @@ from .albums import Album  # noqa: F401
 from .memories import Memory  # noqa: F401
 from .photos import Photos  # noqa: F401
 from .user.user import User  # noqa: F401
+
