@@ -27,6 +27,7 @@ from .child_profile.upload_picture import router as upload_child_picture_router
 
 from .ai_chat import router as ai_chat_router
 from .profile_setup import router as profile_setup_router
+from .milestones import router as milestones_router
 from .album import album_router
 from .albums import router as albums_router
 
@@ -69,6 +70,8 @@ app.include_router(albums_router)
 # AI Chat routes
 app.include_router(ai_chat_router)
 
+# Milestones routes
+app.include_router(milestones_router)
 # Album routes
 app.include_router(album_router)
 app.include_router(albums_router)
@@ -78,6 +81,7 @@ app.include_router(user_profile_router)
 app.include_router(admin_router)
 app.include_router(faq_router)
 app.include_router(user_settings_router)
+app.include_router(downloads_router)
 app.include_router(album_memories_router)
 app.include_router(memories_router)
 
