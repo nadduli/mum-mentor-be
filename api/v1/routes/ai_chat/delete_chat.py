@@ -35,10 +35,11 @@ def delete_conversation(
             )
 
         if result == "forbidden":
+            # Return 404 instead of 403 for security
             logger.warning(f"User {current_user.id} attempted to delete not-owned chat {conversation_id}")
             return fail_response(
-                status_code=status.HTTP_403_FORBIDDEN,
-                message="You do not have permission to delete this conversation"
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Conversation not found"
             )
 
         # deleted
