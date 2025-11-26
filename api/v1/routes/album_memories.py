@@ -14,7 +14,7 @@ from api.utils.responses import fail_response, success_response
 router = APIRouter(prefix='/albums', tags=['Albums'])
 
 @router.get(
-    '/{album_id}',
+    '/{album_id}/memories',
     description="get a list of memories in an album",
     response_model=AlbumMemoriesResponse
 )
