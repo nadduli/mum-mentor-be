@@ -30,7 +30,7 @@ def create_memory_endpoint(
 	"""Create a new memory for the authenticated user."""
 
 	service = MemoriesService(db)
-	memory, error = service.create_memory(payload=payload)
+	memory, error = service.create_memory(payload=payload, current_user=current_user)
 
 	if error:
 		status_code, message = error
