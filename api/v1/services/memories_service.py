@@ -9,6 +9,7 @@ from api.utils.logger import logger
 from api.v1.models.memories import Memory
 from api.v1.models.albums import Album
 from api.v1.models.photos import Photos
+from api.v1.models.user.user import User
 from api.v1.schemas.memories import MemoryCreateRequest
 
 
