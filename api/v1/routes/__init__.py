@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-
+from fastapi.staticfiles import StaticFiles
 from .waitlist import router as waitlist_router
 from .downloads import router as downloads_router
 from .auth import auth_router
@@ -33,8 +33,12 @@ from .albums import router as album_router
 from .album_memories import router as album_memories_router
 from .milestone import router as milestone_router
 
-app = APIRouter()
+from .image import router as image_router
 
+app = APIRouter()
+app.mount("/files", StaticFiles(directory="app/uploads"), name="files")
+
+app.include_router(image_router)
 # Authentication routes
 app.include_router(auth_router)
 app.include_router(waitlist_router)
