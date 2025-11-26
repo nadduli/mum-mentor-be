@@ -40,8 +40,9 @@ class MemoriesService:
     ) -> Tuple[Optional[Memory], Optional[Tuple[int, str]]]:
         """Create a new memory record."""
         try:
-            if not self._album_exists(payload.album_id):
-                logger.warning("Album not found | album_id=%s", payload.album_id)
+            album = self.db.query(Album).filter_by(id=payload.album_id, user_id=current_user.id).first()
+            if not album:
+                logger.warning("Album not found or does not belong to user | album_id=%s", payload.album_id)
                 return None, (404, "Album not found")
 
             if not self._photo_exists(payload.photo):
