@@ -8,6 +8,10 @@ from api.v1.models.photos import Photos
 from fastapi.responses import FileResponse
 import os
 from api.utils.deps import get_current_user, security
+from uuid import UUID
+from api.v1.schemas.memories import MemoryCreateRequest
+from api.v1.services.memories_service import MemoriesService
+from api.utils.responses import success_response
 
 
 UPLOAD_DIR = "app/uploads"
@@ -22,6 +26,51 @@ async def upload_photo(request: Request, file: UploadFile, db: Session = Depends
     """
     response = await ImageService.save_and_compress_image(request, file, db)
     return response
+
+
+@router.post("/{photo_id}/link-to-album", status_code=201)
+async def link_image_to_album(
+    photo_id: UUID,
+    album_id: UUID,
+    note: str = "",
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    """
+    Link an uploaded image to an album by creating a memory.
+    """
+    # Verify photo exists and belongs to user (optional security check)
+    photo = db.query(Photos).filter(Photos.id == photo_id).first()
+    if not photo:
+        return fail_response(message="Photo not found", status_code=404)
+    
+    # Create memory using existing service
+    memory_service = MemoriesService(db)
+    memory_payload = MemoryCreateRequest(
+        album_id=album_id,
+        photo=photo_id,
+        note=note
+    )
+    
+    memory, error = memory_service.create_memory(
+        payload=memory_payload, 
+        current_user=current_user
+    )
+    
+    if error:
+        status_code, message = error
+        return fail_response(status_code=status_code, message=message)
+    
+    return success_response(
+        message="Image successfully added to album",
+        data={
+            "memory_id": memory.id,
+            "album_id": memory.album_id,
+            "photo_id": memory.photo,
+            "note": memory.note
+        },
+        status_code=201
+    )
 
 
 @router.delete("/delete/{photo_id}")
