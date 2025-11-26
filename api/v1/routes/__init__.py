@@ -40,8 +40,8 @@ app.include_router(delete_account_router)
 # Task routes 
 app.include_router(create_task_router)
 app.include_router(task_list_router)
-app.include_router(edit_task_router)
 app.include_router(toggle_completion_router)
+app.include_router(edit_task_router)
 app.include_router(delete_task_router)
 
 # Child Profile routes
