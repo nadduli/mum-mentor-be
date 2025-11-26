@@ -35,7 +35,7 @@ class MemoriesService:
         )
 
     def create_memory(
-        self, *, payload: MemoryCreateRequest
+        self, *, payload: MemoryCreateRequest, current_user: User
     ) -> Tuple[Optional[Memory], Optional[Tuple[int, str]]]:
         """Create a new memory record."""
         try:
