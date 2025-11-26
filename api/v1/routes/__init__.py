@@ -28,6 +28,7 @@ from .child_profile.upload_picture import router as upload_child_picture_router
 from .ai_chat import router as ai_chat_router
 from .profile_setup import router as profile_setup_router
 
+from .album_memories import router as album_memories_router
 from .milestone import router as milestone_router
 
 app = APIRouter()
@@ -65,6 +66,7 @@ app.include_router(user_profile_router)
 app.include_router(admin_router)
 app.include_router(faq_router)
 app.include_router(user_settings_router)
+app.include_router(album_memories_router)
 app.include_router(memories_router)
 
 # Backwards-compatibility
