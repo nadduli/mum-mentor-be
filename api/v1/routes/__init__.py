@@ -23,7 +23,7 @@ from .child_profile.update_child_profile import router as update_child_profile_r
 from .child_profile.delete_child_profile import router as delete_child_profile_router
 from .child_profile.upload_picture import router as upload_child_picture_router
 
-from .chats import chat_router
+
 from .ai_chat import router as ai_chat_router
 from .profile_setup import router as profile_setup_router
 
@@ -55,8 +55,6 @@ app.include_router(upload_child_picture_router)
 # Profile Setup routes
 app.include_router(profile_setup_router)
 
-# Chat routes (The Master Router from /chats folder)
-app.include_router(chat_router)
 
 # AI Chat routes
 app.include_router(ai_chat_router)
