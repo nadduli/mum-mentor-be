@@ -18,14 +18,20 @@ def list_tasks(
     task_status: Optional[str] = Query(  # CHANGED: status -> task_status
         "pending", description="Filter by status: default is 'pending'"
     ),
+    order_by: Optional[str] = Query(
+        "due_date", description="Field to order by: due_date, created_at, updated_at, name, status"
+    ),
+    order_direction: Optional[str] = Query(
+        "asc", description="Order direction: asc or desc"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Get paginated list of tasks for the current user with optional status filter.
+    Get paginated list of tasks for the current user with optional status filter and ordering.
     """
     logger.info(
-        f"Fetching tasks | user_id={current_user.id} | page={page} | per_page={per_page} | status={task_status}"  # CHANGED
+        f"Fetching tasks | user_id={current_user.id} | page={page} | per_page={per_page} | status={task_status} | order_by={order_by} | order_direction={order_direction}"
     )
 
     try:
@@ -36,6 +42,23 @@ def list_tasks(
                 message="Invalid status filter",
                 context={"allowed": ["pending", "completed"]},
             )
+            
+        # Validate order_by field
+        allowed_order_fields = ["due_date", "created_at", "updated_at", "name", "status"]
+        if order_by not in allowed_order_fields:
+            return fail_response(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Invalid order_by field",
+                context={"allowed": allowed_order_fields},
+            )
+
+        # Validate order_direction
+        if order_direction not in ["asc", "desc"]:
+            return fail_response(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="Invalid order_direction",
+                context={"allowed": ["asc", "desc"]},
+            )
 
         task_service = TaskService(db)
 
@@ -44,6 +67,8 @@ def list_tasks(
             page=page,
             per_page=per_page,
             status=task_status,  # CHANGED
+            order_by=order_by,
+            order_direction=order_direction,
         )
 
         # Prepare task response list
