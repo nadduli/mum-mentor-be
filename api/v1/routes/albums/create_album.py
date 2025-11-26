@@ -30,5 +30,5 @@ def create_album(
             data={"album_id": str(album.id), "name": album.name}
         )
     except Exception as e:
-        logger.error(f"Album creation failed: {e}")
-        return fail_response(400, "Unable to create album", {"error": str(e)})
+        logger.error(f"Album creation failed: {e}", exc_info=True)
+        return fail_response(500, "An unexpected error occurred while creating the album")

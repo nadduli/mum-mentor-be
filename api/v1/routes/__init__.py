@@ -72,6 +72,7 @@ app.include_router(ai_chat_router)
 
 # Album routes
 app.include_router(album_router)
+app.include_router(albums_router)
 
 # Other routes
 app.include_router(user_profile_router)

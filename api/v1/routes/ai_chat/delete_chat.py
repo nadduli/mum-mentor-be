@@ -3,14 +3,14 @@ from sqlalchemy.orm import Session
 import uuid
 
 from api.db.database import get_db
-from api.v1.dependencies.auth import get_current_user
+from api.utils.deps import get_current_user
 from api.v1.services.chat.chat_service import ChatService
 from api.utils.logger import logger
 from api.utils.responses import success_response, fail_response
 
-router = APIRouter()
+router = APIRouter(prefix="/chats", tags=["AI Chat"])
 
-@router.delete("/conversations/{conversation_id}", status_code=status.HTTP_200_OK)
+@router.delete("/{conversation_id}", status_code=status.HTTP_200_OK)
 def delete_conversation(
     conversation_id: uuid.UUID,
     db: Session = Depends(get_db),
