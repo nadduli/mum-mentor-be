@@ -100,7 +100,8 @@ class MemoriesService:
         try:
             memory = (
                 self.db.query(Memory)
-                .filter(Memory.id == memory_id)
+                .join(Album, Album.id == Memory.album_id)
+                .filter(Memory.id == memory_id, Album.user_id == user_id)
                 .first()
             )
 
