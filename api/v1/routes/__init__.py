@@ -16,9 +16,18 @@ from .task.edit_task import router as edit_task_router
 from .task.toggle_completion import router as toggle_completion_router
 from .task.delete_task import router as delete_task_router
 
+from .child_profile.create_child_profile import router as create_child_profile_router
+from .child_profile.get_child_profile import router as get_child_profile_router
+from .child_profile.list_child_profiles import router as list_child_profiles_router
+from .child_profile.update_child_profile import router as update_child_profile_router
+from .child_profile.delete_child_profile import router as delete_child_profile_router
+from .child_profile.upload_picture import router as upload_child_picture_router
+
 from .chats import chat_router
 from .ai_chat import router as ai_chat_router
 from .profile_setup import router as profile_setup_router
+
+from .milestone import router as milestone_router
 
 app = APIRouter()
 
@@ -34,6 +43,14 @@ app.include_router(task_list_router)
 app.include_router(edit_task_router)
 app.include_router(toggle_completion_router)
 app.include_router(delete_task_router)
+
+# Child Profile routes
+app.include_router(create_child_profile_router)
+app.include_router(get_child_profile_router)
+app.include_router(list_child_profiles_router)
+app.include_router(update_child_profile_router)
+app.include_router(delete_child_profile_router)
+app.include_router(upload_child_picture_router)
 
 # Profile Setup routes
 app.include_router(profile_setup_router)
@@ -52,3 +69,6 @@ app.include_router(user_settings_router)
 
 # Backwards-compatibility
 contact_router = app
+
+# milestone router 
+app.include_router(milestone_router)

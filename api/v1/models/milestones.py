@@ -1,8 +1,25 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, DateTime, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, DateTime, Enum
+from sqlalchemy.orm import Mapped, mapped_column
 from api.db.base_model import BaseModel
+import enum
+
+
+class MotherCategory(str, enum.Enum):
+    """Predefined milestone categories for mothers."""
+    BODY_RECOVERY = "Body Recovery"
+    MENTAL_WELLNESS = "Mental Wellness"
+    ROUTINE_BUILDER = "Routine Builder"
+    SELF_CARE = "Self Care"
+
+
+class ChildCategory(str, enum.Enum):
+    """Predefined milestone categories for children."""
+    DEVELOPMENT = "Development"
+    HEALTH_NUTRITION = "Health and Nutrition"
+    ACTIVITIES_PLAY = "Activities and Play"
+    GROWTH_CHECK = "Growth Check"
 
 
 class Milestone(BaseModel):
@@ -30,9 +47,10 @@ class Milestone(BaseModel):
         String(20), nullable=False, default="pending"
     )  # pending | completed
 
-    category_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("milestone_categories.id"), nullable=False
-    )
+    category: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # For mother: Body Recovery | Mental Wellness | Routine Builder | Self Care
+       # For child: Development | Health and Nutrition | Activities and Play | Growth Check
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -44,6 +62,3 @@ class Milestone(BaseModel):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc)
     )
-
-    # Relationships
-    category = relationship("MilestoneCategory", back_populates="milestones")
