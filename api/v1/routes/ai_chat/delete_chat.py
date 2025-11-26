@@ -20,22 +20,28 @@ def delete_conversation(
     Deletes a specific chat conversation.
     """
     try:
-        is_deleted = ChatService.delete_conversation(
-            session=db, 
-            conversation_id=conversation_id, 
+        result = ChatService.delete_conversation(
+            session=db,
+            conversation_id=conversation_id,
             user_id=current_user.id
         )
 
-        if not is_deleted:
-            logger.warning(f"User {current_user.id} attempted to delete non-existent/unowned chat {conversation_id}")
-            
+        if result == "not_found":
+            logger.warning(f"User {current_user.id} attempted to delete non-existent chat {conversation_id}")
             return fail_response(
                 status_code=status.HTTP_404_NOT_FOUND,
                 message="Conversation not found"
             )
 
+        if result == "forbidden":
+            logger.warning(f"User {current_user.id} attempted to delete not-owned chat {conversation_id}")
+            return fail_response(
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="You do not have permission to delete this conversation"
+            )
+
+        # deleted
         logger.info(f"Chat conversation {conversation_id} deleted successfully by user {current_user.id}")
-        
         return success_response(
             status_code=status.HTTP_200_OK,
             message="Conversation deleted"

@@ -8,16 +8,20 @@ class ChatService:
     def delete_conversation(session: Session, conversation_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         """
         Deletes a chat session only if it exists AND belongs to the user.
-        Returns True if deleted, False if not found/unauthorized.
+        Returns one of: 'deleted', 'not_found', 'forbidden'.
         """
-        chat_session = ChatSession.fetch_one(session, id=conversation_id, user_id=user_id)
+        # Try to locate the session by id without scoping to user first
+        chat_session = ChatSession.fetch_one(session, id=conversation_id)
 
         if not chat_session:
-            return False
+            return "not_found"
+
+        # If session exists but does not belong to requester
+        if str(chat_session.user_id) != str(user_id):
+            return "forbidden"
 
         chat_session.delete(session)
-        
-        return True
+        return "deleted"
 
 
     @staticmethod

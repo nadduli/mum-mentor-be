@@ -2,7 +2,6 @@ from fastapi.exceptions import RequestValidationError, HTTPException
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
 from api.utils.responses import validation_error_response
 from api.v1.routes import app as api_v1_router
 from collections import defaultdict
