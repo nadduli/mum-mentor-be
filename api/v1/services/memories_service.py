@@ -95,9 +95,9 @@ class MemoriesService:
             return None, (500, "Failed to create memory")
 
     def delete_memory(
-        self, *, memory_id: UUID
+        self, *, memory_id: UUID, user_id: UUID
     ) -> Tuple[bool, Optional[Tuple[int, str]]]:
-        """Delete a memory by identifier."""
+        """Delete a memory by identifier for the given user."""
         try:
             memory = (
                 self.db.query(Memory)
