@@ -39,7 +39,7 @@ async def link_image_to_album(
     """
     Link an uploaded image to an album by creating a memory.
     """
-    # Verify photo exists and belongs to user (optional security check)
+    # Verify photo exists and belongs to user
     photo = db.query(Photos).filter(Photos.id == photo_id).first()
     if not photo:
         return fail_response(message="Photo not found", status_code=404)
@@ -82,8 +82,9 @@ async def delete_photo(photo_id: str, db: Session = Depends(get_db), status_code
     file_delete_response = ImageService.delete_image( db, photo_id)
     return file_delete_response
 
+
 @router.get("/{photo_id}", response_model=PhotoResponse, status_code=200)
-async def get_photo(photo_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+async def get_photo(photo_id: str, db: Session = Depends(get_db)):
     """
     Retrieve a photo by ID.
     """
@@ -91,7 +92,7 @@ async def get_photo(photo_id: str, db: Session = Depends(get_db), current_user=D
     return response
 
 @router.get("/download/{photo_id}.jpg", status_code=200)
-async def download_photo(photo_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+async def download_photo(photo_id: str, db: Session = Depends(get_db)):
     # fetch photo record
     photo = db.query(Photos).filter(Photos.id == photo_id).first()
     if not photo:
@@ -105,7 +106,11 @@ async def download_photo(photo_id: str, db: Session = Depends(get_db), current_u
         return fail_response(message="File not found on server", status_code=404)
 
     # return file for download
-    return FileResponse(path=file_path, filename=filename, media_type="application/octet-stream")
+    return FileResponse(
+        path=file_path, 
+        filename=filename, 
+        media_type="image/jpeg"
+    )
 
 
 @router.delete("/delete", status_code=204)
@@ -115,6 +120,9 @@ async def delete_all_photos(db: Session = Depends(get_db), current_user=Depends(
 
 
 @router.get("/", response_model=list[PhotoResponse])
-async def get_all_photos(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+async def get_all_photos(db: Session = Depends(get_db)):
+    """
+    Get all photos metadata.
+    """
     response = ImageService.get_all_photos(db)
     return response

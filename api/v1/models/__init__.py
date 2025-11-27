@@ -1,45 +1,30 @@
-# Import model classes so they are registered on package import
-from .albums import Album  # noqa: F401
-from .memories import Memory  # noqa: F401
-from .photos import Photos  # noqa: F401
-from .user.user import User  # noqa: F401
+from api.v1.models.milestones import Milestone
+from api.v1.models.categories import Category
 
-# Community models
-from .community import Post, PostPhoto, PostLikes, PostComments  # noqa: F401
-
-# Resource models
-from .resource import Resource, ResourceMedia, ResourceLikes, ResourceComment, SavedForLater  # noqa: F401
-
-# Journal models
-from .journal.journal import Journal  # noqa: F401
-from .journal.journal_photos import JournalPhoto  # noqa: F401
-from .journal.journal_category import JournalCategory  # noqa: F401
-from .journal.journal_likes import JournalLike  # noqa: F401
-from .journal.journal_comments import JournalComment  # noqa: F401
-
-# Milestone and Category models
-from .milestones import Milestone  # noqa: F401
-from .categories import Category  # noqa: F401
+# Resources
+from .resource.resource import Resource
+from .resource.resource_category import ResourceCategory
+from .resource.resource_media import ResourceMedia
+from .resource.resource_likes import ResourceLike
+from .resource.resource_comment import ResourceComment
+from .resource.saved_for_later import SavedForLater
+from .community.posts import Post
+from .community.post_photos import PostPhoto
+from .community.post_likes import PostLike
+from .community.post_comments import PostComment
 
 __all__ = [
-    "Album",
-    "Memory",
-    "Photos",
-    "User",
-    "Post",
-    "PostPhoto",
-    "PostLikes",
-    "PostComments",
+    "Milestone", 
+    "Category",
     "Resource",
+    "ResourceCategory",
     "ResourceMedia",
-    "ResourceLikes",
+    "ResourceLike",
     "ResourceComment",
     "SavedForLater",
-    "Journal",
-    "JournalPhoto",
-    "JournalCategory",
-    "JournalLike",
-    "JournalComment",
-    "Milestone",
-    "Category",
+    "Post",
+    "PostPhoto",
+    "PostLike",
+    "PostComment"
 ]
+
