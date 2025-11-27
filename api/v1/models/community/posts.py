@@ -4,7 +4,7 @@ import uuid
 
 from api.db.base_model import BaseModel
 
-class Posts(BaseModel):
+class Post(BaseModel):
     __tablename__ = "posts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
