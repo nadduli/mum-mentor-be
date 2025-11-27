@@ -27,7 +27,4 @@ from .albums import Album  # noqa: F401
 from .memories import Memory  # noqa: F401
 from .photos import Photos  # noqa: F401
 from .user.user import User  # noqa: F401
-from .community import Posts, PostPhotos, PostLikes, PostComments  # noqa: F401
-from .journal import Journal, JournalPhotos, JournalLikes, JournalComments  # noqa: F401
-from .resource import Resource, ResourceMedia, ResourceLikes, ResourceComment, SavedForLater  # noqa: F401
 
