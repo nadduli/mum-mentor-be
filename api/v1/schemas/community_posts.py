@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class PostCreateRequest(BaseModel):
     title: str = Field(...,min_length=1, max_length=200)
-    content: str = Field(...)
+    content: str = Field(..., max_length=1000)
 
 
 class PostResponse(BaseModel):
