@@ -5,14 +5,14 @@ import uuid
 
 class JournalEdit(BaseModel):
     title: Optional[str] = None
-    date: Optional[datetime] = None
+    entry_date: Optional[datetime] = None
     category: Optional[str] = None
     mood: Optional[str] = None
     photos: Optional[List[str]] = None
-    thoughts: Optional[str] = None
+    content: Optional[str] = None
 
 class JournalData(BaseModel):
-    journal_entry_id: uuid.UUID
+    id: uuid.UUID
     title: str
 
 class JournalResponse(BaseModel):
