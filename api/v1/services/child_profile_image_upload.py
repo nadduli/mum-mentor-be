@@ -12,11 +12,10 @@ from fastapi import UploadFile, HTTPException, status
 from api.utils.logger import logger
 
 
-# Configuration
-UPLOAD_DIR = Path("uploads/child_profiles")
+UPLOAD_DIR = Path("app/uploads/child_profiles")
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-BASE_URL = "/static/uploads/child_profiles"  # URL path for serving images
+BASE_URL = "/files/child_profiles"
 
 
 def ensure_upload_directory_exists():
@@ -95,7 +94,7 @@ async def save_child_profile_image(file: UploadFile) -> str:
         with open(file_path, "wb") as f:
             f.write(contents)
         
-        # Return URL path
+
         image_url = f"{BASE_URL}/{unique_filename}"
         
         logger.info(f"Image saved successfully: {image_url}")
@@ -127,7 +126,7 @@ def delete_child_profile_image(image_url: Optional[str]) -> bool:
     
     try:
         # Extract filename from URL
-        # URL format: /static/uploads/child_profiles/filename.jpg
+        # URL format: /files/child_profiles/filename.jpg
         if BASE_URL in image_url:
             filename = image_url.split("/")[-1]
             file_path = UPLOAD_DIR / filename
@@ -155,7 +154,7 @@ def get_absolute_image_url(base_url: str, image_url: Optional[str]) -> Optional[
     
     Args:
         base_url: Base URL of the API (e.g., https://api.example.com)
-        image_url: Relative image URL (e.g., /static/uploads/child_profiles/uuid.jpg)
+        image_url: Relative image URL (e.g., /files/child_profiles/uuid.jpg)
         
     Returns:
         Absolute URL or None
@@ -164,6 +163,6 @@ def get_absolute_image_url(base_url: str, image_url: Optional[str]) -> Optional[
         return None
     
     if image_url.startswith("http"):
-        return image_url  # Already absolute
+        return image_url
     
     return f"{base_url.rstrip('/')}{image_url}"
