@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from api.db.base_model import BaseModel
 import uuid
 
-class JournalPhotos(BaseModel):
+class JournalPhoto(BaseModel):
     __tablename__ = "journal_photos"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
