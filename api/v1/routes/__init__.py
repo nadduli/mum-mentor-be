@@ -37,6 +37,7 @@ from .albums import router as albums_router
 from .album_memories import router as album_memories_router
 from .image import router as image_router
 from .journal import journal_entry_router
+from .resource_media import router as resource_media_router
 
 app = APIRouter()
 app.mount("/files", StaticFiles(directory="app/uploads"), name="files")
@@ -76,6 +77,9 @@ app.include_router(ai_chat_router)
 
 # Milestone router
 app.include_router(milestone_router)
+
+# Resource Media routes (Community Posts)
+app.include_router(resource_media_router)
 
 # Other routes
 app.include_router(user_profile_router)

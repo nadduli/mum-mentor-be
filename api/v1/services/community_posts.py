@@ -33,7 +33,7 @@ class CommunityPostService:
             logger.info("Community post created | post_id=%s | user_id=%s", post.id, user_id)
             return post, None
 
-        except Exception as exc:  
+        except Exception as exc:
             logger.error(
                 "Error creating community post | user_id=%s | title=%s | error=%s",
                 user_id,
