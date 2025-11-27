@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from api.db.base_model import BaseModel
 
 if TYPE_CHECKING:
-    from api.v1.models.journal.journal_photos import JournalPhotos
+    from api.v1.models.journal.journal_photos import JournalPhoto
     from api.v1.models.journal.journal_category import JournalCategory
 
 class Journal(BaseModel):
