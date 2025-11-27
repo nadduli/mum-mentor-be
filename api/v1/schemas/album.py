@@ -17,7 +17,7 @@ class MemoryResponse(BaseModel):
     """Schema for memory response"""
     id: UUID
     album_id: UUID
-    photo: PhotoResponse
+    photo_data: PhotoResponse
     note: str
     saved_on: datetime
 
