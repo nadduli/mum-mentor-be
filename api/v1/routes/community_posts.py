@@ -15,7 +15,7 @@ from api.utils.logger import logger
 router = APIRouter(prefix="/community/posts", tags=["Community Posts"])
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, summary="Create a community post", response_model=PostResponse)
+@router.post("/", status_code=status.HTTP_201_CREATED, summary="Create a community post")
 def create_post(
     payload: PostCreateRequest,
     db: Session = Depends(get_db),
