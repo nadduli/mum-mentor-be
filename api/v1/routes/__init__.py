@@ -1,3 +1,5 @@
+# api/v1/routes/__init__.py
+
 from fastapi import APIRouter
 from fastapi.staticfiles import StaticFiles
 from .waitlist import router as waitlist_router
@@ -24,23 +26,20 @@ from .child_profile.update_child_profile import router as update_child_profile_r
 from .child_profile.delete_child_profile import router as delete_child_profile_router
 from .child_profile.upload_picture import router as upload_child_picture_router
 
-
 from .ai_chat import router as ai_chat_router
 from .profile_setup import router as profile_setup_router
-from .milestones import router as milestones_router
-from .album import album_router
-from .albums import router as albums_router
-
-from .album_memories import router as album_memories_router
+# ONLY include the milestone router you need
 from .milestone import router as milestone_router
 
+from .album import album_router
+from .albums import router as albums_router
+from .album_memories import router as album_memories_router
 from .image import router as image_router
 
 app = APIRouter()
 app.mount("/files", StaticFiles(directory="app/uploads"), name="files")
 
 app.include_router(image_router)
-# Authentication routes
 app.include_router(auth_router)
 app.include_router(waitlist_router)
 app.include_router(google_auth_router)
@@ -67,14 +66,13 @@ app.include_router(profile_setup_router)
 # Album routes
 app.include_router(album_router)
 app.include_router(albums_router)
+app.include_router(album_memories_router)
+
 # AI Chat routes
 app.include_router(ai_chat_router)
 
-# Milestones routes
-app.include_router(milestones_router)
-# Album routes
-app.include_router(album_router)
-app.include_router(albums_router)
+# Milestone router - simplified version only
+app.include_router(milestone_router)
 
 # Other routes
 app.include_router(user_profile_router)
@@ -82,11 +80,7 @@ app.include_router(admin_router)
 app.include_router(faq_router)
 app.include_router(user_settings_router)
 app.include_router(downloads_router)
-app.include_router(album_memories_router)
 app.include_router(memories_router)
 
 # Backwards-compatibility
 contact_router = app
-
-# milestone router 
-app.include_router(milestone_router)
