@@ -37,6 +37,7 @@ from .albums import router as albums_router
 from .album_memories import router as album_memories_router
 from .image import router as image_router
 from .resource_media import router as resource_media_router
+from .community import router as community_router
 
 app = APIRouter()
 app.mount("/files", StaticFiles(directory="app/uploads"), name="files")
@@ -87,6 +88,7 @@ app.include_router(user_settings_router)
 app.include_router(downloads_router)
 app.include_router(memories_router)
 app.include_router(community_posts_router)
+app.include_router(community_router)
 
 # Backwards-compatibility
 contact_router = app
