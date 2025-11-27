@@ -3,7 +3,8 @@ Route for uploading child profile picture.
 """
 
 from uuid import UUID
-from fastapi import APIRouter, Depends, status, UploadFile, File
+from fastapi import APIRouter, Depends, status, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from api.db.database import get_db
@@ -13,10 +14,13 @@ from api.v1.services.child_profile_service import ChildProfileService
 from api.v1.services.child_profile_image_upload import save_child_profile_image, delete_child_profile_image
 from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
+from pathlib import Path
 
 
 router = APIRouter(prefix="/child-profiles", tags=["Child Profiles"])
 
+
+UPLOAD_DIR = Path("app/uploads/child_profiles")
 
 @router.post("/{child_id}/upload-picture", status_code=status.HTTP_200_OK)
 async def upload_child_profile_picture(
@@ -82,3 +86,38 @@ async def upload_child_profile_picture(
             message=getattr(e, "detail", "Failed to upload profile picture"),
             context={"error": str(e)}
         )
+
+
+@router.get("/avatar/{filename}", status_code=status.HTTP_200_OK)
+async def get_child_avatar(filename: str):
+    """
+    Serve child profile avatar image.
+    
+    **Public endpoint - no authentication required**
+    
+    This allows avatars to be displayed without authentication,
+    making them usable in <img> tags and shareable.
+    """
+    file_path = UPLOAD_DIR / filename
+    
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Avatar image not found"
+        )
+    
+    # Determine media type based on file extension
+    ext = filename.split(".")[-1].lower()
+    media_types = {
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "webp": "image/webp"
+    }
+    media_type = media_types.get(ext, "image/jpeg")
+    
+    return FileResponse(
+        path=str(file_path),
+        media_type=media_type,
+        filename=filename
+    )

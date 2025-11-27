@@ -74,7 +74,7 @@ app.include_router(album_memories_router)
 # AI Chat routes
 app.include_router(ai_chat_router)
 
-# Milestone router - simplified version only
+# Milestone router
 app.include_router(milestone_router)
 
 # Other routes
