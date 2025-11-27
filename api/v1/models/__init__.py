@@ -8,6 +8,10 @@ from .resource.resource_media import ResourceMedia
 from .resource.resource_likes import ResourceLike
 from .resource.resource_comment import ResourceComment
 from .resource.saved_for_later import SavedForLater
+from .community.posts import Post
+from .community.post_photos import PostPhoto
+from .community.post_likes import PostLike
+from .community.post_comments import PostComment
 
 __all__ = [
     "Milestone", 
@@ -17,6 +21,10 @@ __all__ = [
     "ResourceMedia",
     "ResourceLike",
     "ResourceComment",
-    "SavedForLater"
+    "SavedForLater",
+    "Post",
+    "PostPhoto",
+    "PostLike",
+    "PostComment"
 ]
 
