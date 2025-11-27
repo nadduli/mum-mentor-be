@@ -22,9 +22,13 @@ class CommunityPostService:
             self.db.commit()
             try:
                 self.db.refresh(post)
-            except Exception:
-               
-                pass
+            except Exception as exc_refresh:
+                logger.warning(
+                    "Failed to refresh post after creation | post_id=%s | user_id=%s | error=%s",
+                    getattr(post, "id", None),
+                    user_id,
+                    exc_refresh,
+                )
 
             logger.info("Community post created | post_id=%s | user_id=%s", post.id, user_id)
             return post, None
