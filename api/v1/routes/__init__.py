@@ -12,6 +12,7 @@ from .admin import router as admin_router
 from .faq import router as faq_router
 from .user_settings import router as user_settings_router
 from .memories import router as memories_router
+from .community_posts import router as community_posts_router
 
 from .task.list_task import router as task_list_router
 from .task.create_task import router as create_task_router
@@ -83,6 +84,7 @@ app.include_router(faq_router)
 app.include_router(user_settings_router)
 app.include_router(downloads_router)
 app.include_router(memories_router)
+app.include_router(community_posts_router)
 
 # Backwards-compatibility
 contact_router = app
