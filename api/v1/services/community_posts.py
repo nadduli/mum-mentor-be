@@ -20,17 +20,16 @@ class CommunityPostService:
 
             self.db.add(post)
             self.db.commit()
-            # Some SQLAlchemy setups require refresh to populate defaults
             try:
                 self.db.refresh(post)
             except Exception:
-                # ignore refresh errors in test environments
+               
                 pass
 
             logger.info("Community post created | post_id=%s | user_id=%s", post.id, user_id)
             return post, None
 
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except Exception as exc:  
             logger.error(
                 "Error creating community post | user_id=%s | title=%s | error=%s",
                 user_id,
