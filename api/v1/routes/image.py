@@ -91,7 +91,7 @@ async def get_photo(photo_id: str, db: Session = Depends(get_db), current_user=D
     return response
 
 @router.get("/download/{photo_id}.jpg", status_code=200)
-async def download_photo(photo_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+async def download_photo(photo_id: str, db: Session = Depends(get_db)):
     # fetch photo record
     photo = db.query(Photos).filter(Photos.id == photo_id).first()
     if not photo:
