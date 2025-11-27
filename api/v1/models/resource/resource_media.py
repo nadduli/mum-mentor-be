@@ -8,4 +8,4 @@ class ResourceMedia(BaseModel):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     resource_id = Column(UUID(as_uuid=True), nullable=False)
     url = Column(String, nullable=False)
-    type = Column(String, nullable=False)  # "photo" or "video"
+    media_type = Column(String(10), nullable=False)  # "photo" or "video"
