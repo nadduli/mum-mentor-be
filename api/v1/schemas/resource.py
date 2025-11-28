@@ -55,3 +55,8 @@ class ResourceCreate(BaseModel):
     title: str
     content: str
     category_id: UUID
+
+class ResourceUpdate(BaseModel):
+    title: str
+    content: str
+    category_id: UUID | None = None
