@@ -35,6 +35,7 @@ from .album import album_router
 from .albums import router as albums_router
 from .album_memories import router as album_memories_router
 from .image import router as image_router
+from .journal import journal_entry_router
 from .resource import router as resource_router
 from .resource_media import router as resource_media_router
 from .community import router as community_router
@@ -45,6 +46,7 @@ app = APIRouter()
 app.mount("/files", StaticFiles(directory="app/uploads"), name="files")
 
 app.include_router(image_router)
+app.include_router(journal_entry_router)
 app.include_router(auth_router)
 app.include_router(waitlist_router)
 app.include_router(google_auth_router)
