@@ -7,7 +7,6 @@ from api.utils.deps import get_current_user
 from api.v1.models.user.user import User
 from api.v1.services.journal import JournalService
 from api.utils.responses import success_response
-from api.utils.logger import logger
 
 router = APIRouter(prefix="/journal", tags=["Journal"])
 
@@ -20,7 +19,6 @@ def delete_journal_entry(
     """
     Delete a specific journal entry.
     """
-    logger.info(f"User {current_user.id} attempting to delete journal {entry_id}")
     JournalService.delete_journal(session, entry_id, current_user.id)
     
     return success_response(
