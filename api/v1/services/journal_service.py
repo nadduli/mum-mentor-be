@@ -74,3 +74,83 @@ class JournalService:
             db.rollback()
             logger.error(f"Error creating journal for user_id={user_id}: {str(e)}", exc_info=True)
             return None
+
+    
+
+    @staticmethod
+    def get_all_journals(
+        db: Session,
+        user_id: str,
+        limit: int = 10,
+        offset: int = 0,
+        sort_by: str = "entry_date",
+        order: str = "desc"
+    ) -> dict:
+        """
+        Get all journal entries for a user with pagination and sorting
+        
+        Args:
+            db: Database session
+            user_id: ID of the user
+            limit: Number of entries to return
+            offset: Number of entries to skip
+            sort_by: Field to sort by (entry_date or created_at)
+            order: Sort order (asc or desc)
+            
+        Returns:
+            Dictionary with entries list and total count
+        """
+        try:
+            from sqlalchemy import select, func
+            
+            # Get all journals for the user
+            all_journals = Journal.fetch_all(db, user_id=uuid.UUID(user_id))
+            
+            
+            total = len(all_journals)
+            
+            
+            if sort_by == "created_at":
+                all_journals.sort(
+                    key=lambda j: j.created_at,
+                    reverse=(order.lower() == "desc")
+                )
+            else:  # sort by entry_date
+                all_journals.sort(
+                    key=lambda j: j.entry_date,
+                    reverse=(order.lower() == "desc")
+                )
+            
+            
+            journals = all_journals[offset:offset + limit]
+            
+            # Format response
+            entries = []
+            for journal in journals:
+                entry = {
+                    "id": str(journal.id),
+                    "title": journal.title,
+                    "content": journal.content,
+                    "mood": journal.mood,
+                    "entry_date": journal.entry_date.isoformat() if journal.entry_date else None,
+                    "created_at": journal.created_at.isoformat() if journal.created_at else None,
+                    "updated_at": journal.updated_at.isoformat() if journal.updated_at else None,
+                    "views": journal.views,
+                    "category": {
+                        "id": str(journal.category.id),
+                        "name": journal.category.name
+                    } if journal.category else None,
+                    "photos": [{"id": str(photo.id), "url": photo.url} for photo in journal.photos]
+                }
+                entries.append(entry)
+            
+            logger.info(f"Retrieved {len(entries)} journal entries for user_id={user_id}")
+            
+            return {
+                "entries": entries,
+                "total": total
+            }
+            
+        except Exception as e:
+            logger.error(f"Error retrieving journals for user_id={user_id}: {str(e)}", exc_info=True)
+            raise
