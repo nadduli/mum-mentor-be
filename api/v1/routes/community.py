@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 import uuid
 
 from api.db.database import get_db
-from api.v1.dependencies.auth import get_current_user
+from api.utils.deps import get_current_user
+from api.v1.models.user.user import User
 from api.v1.services.community import CommunityService
 from api.v1.schemas.community import (
     PostResponse, 
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/community", tags=["Community"])
 def view_post(
     post_id: uuid.UUID,
     session: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get a single post by ID.
@@ -49,7 +50,7 @@ def view_post(
 def toggle_post_like(
     post_id: uuid.UUID,
     session: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Like or unlike a post (toggle).
@@ -58,8 +59,7 @@ def toggle_post_like(
     **Requires Authentication.**
     """
     # current_user.id is already a string UUID
-    user_uuid = uuid.UUID(str(current_user.id))
-    
+    user_uuid = current_user.id    
     is_liked, likes_count = CommunityService.toggle_post_like(
         session, 
         post_id, 

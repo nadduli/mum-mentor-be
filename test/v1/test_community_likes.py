@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from main import app
 from api.v1.models.user.user import User
 from api.db.database import get_db
-from api.v1.dependencies.auth import get_current_user
+from api.utils.deps import get_current_user
 
 client = TestClient(app)
 
@@ -24,7 +24,7 @@ def mock_db_session():
 def _make_user():
     """Helper to create a mock user"""
     return User(
-        id=str(uuid.uuid4()),
+        id=uuid.uuid4(),
         email="testuser@community.com",
         full_name="Test User",
         role="user",
