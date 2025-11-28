@@ -8,7 +8,7 @@ from api.utils.responses import success_response
 from api.v1.schemas.resource_media import ResourceMediaResponse
 from api.v1.services.resource_media import ResourceMediaService
 
-router = APIRouter(prefix="/resource-media", tags=["Resource Media"])
+router = APIRouter(prefix="/resource-media", tags=["Resources"])
 
 
 @router.get("/{media_id}", status_code=status.HTTP_200_OK)
