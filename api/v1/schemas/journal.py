@@ -44,12 +44,20 @@ class JournalEdit(BaseModel):
     entry_date: Optional[datetime] = None
     category: Optional[str] = None
     mood: Optional[str] = None
-    photos: Optional[List[str]] = None
-    content: Optional[str] = None
+    photo_urls: Optional[List[str]] = None
+    content: Optional[str] = Field(None, alias="thoughts")
 
 class JournalData(BaseModel):
     id: uuid.UUID
     title: str
+    content: str
+    mood: Optional[str]
+    entry_date: datetime
+    created_at: datetime
+    updated_at: Optional[datetime]
+    category_id: Optional[uuid.UUID] = None
+    class Config:
+        from_attributes = True
 
 class JournalResponse(BaseModel):
     status: str

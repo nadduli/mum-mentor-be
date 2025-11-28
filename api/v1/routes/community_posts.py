@@ -10,7 +10,7 @@ from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
 
 
-router = APIRouter(prefix="/community/posts", tags=["Community Posts"])
+router = APIRouter(prefix="/community/posts", tags=["Community"])
 
 @router.post("/", status_code=status.HTTP_201_CREATED, summary="Create a community post")
 def create_post(
