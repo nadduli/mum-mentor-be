@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc
+from sqlalchemy import desc, select
 from typing import Tuple, List
 
 from api.v1.models.resource.resource import Resource
