@@ -41,3 +41,42 @@ class JournalService:
             session.rollback()
             logger.error(f"Error updating journal {journal_id}: {str(e)}")
             raise HTTPException(status_code=500, detail="An error occurred while updating the journal")
+    
+    @staticmethod
+    def delete_journal(session: Session, journal_id: uuid.UUID, user_id: uuid.UUID):
+        """
+        Delete a journal entry
+        
+        Args:
+            session: Database session
+            journal_id: ID of the journal to delete
+            user_id: ID of the user requesting deletion
+            
+        Returns:
+            True if deletion successful
+            
+        Raises:
+            HTTPException: If journal not found or user unauthorized
+        """
+        logger.info(f"User {user_id} attempting to delete journal {journal_id}")
+        
+        # Find the journal and verify ownership
+        journal = session.query(Journal).filter(
+            Journal.id == journal_id,
+            Journal.user_id == user_id
+        ).first()
+        
+        if not journal:
+            logger.warning(f"Journal {journal_id} not found or unauthorized for user {user_id}")
+            raise HTTPException(status_code=404, detail="Journal entry not found")
+        
+        try:
+            # Delete the journal (photos will cascade delete automatically)
+            session.delete(journal)
+            session.commit()
+            logger.info(f"Journal {journal_id} successfully deleted")
+            return True
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error deleting journal {journal_id}: {str(e)}")
+            raise HTTPException(status_code=500, detail="An error occurred while deleting the journal")
