@@ -22,8 +22,10 @@ def edit_journal_entry(
     """
     updated_journal = JournalService.update_journal(session, entry_id, current_user.id, payload)
 
+    response_data = JournalData.model_validate(updated_journal).model_dump()
+
     return success_response(
         status_code=status.HTTP_200_OK,
-        message="Journal entry updated successfully",
-        data=JournalData.model_validate(updated_journal).model_dump()
+        message="Successfully edited entry",
+        data=response_data
     )

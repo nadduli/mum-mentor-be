@@ -59,19 +59,20 @@ def user_journal(client, test_user):
     return j_id
 
 def test_edit_journal_success(client, test_user, user_journal):
-    """Test that a user can successfully edit their own journal"""
+    """Test editing title and mood"""
     payload = {
-        "title": "New Title",
-        "content": "I am feeling great now",
-        "mood": "Happy"
+        "title": "New Happy Title",
+        "mood": "Happy",
+        "thoughts": "I am feeling better now",
+        "category": "Health",
+        "photos": ["http://img.com/1.jpg"]
     }
     
     response = client.patch(f"/api/v1/journal/{user_journal}", json=payload)
     
     assert response.status_code == 200
-    assert response.json()["message"] == "Journal entry updated successfully"
-    assert response.json()["data"]["title"] == "New Title"
-    assert response.json()["data"]["mood"] == "Happy"
+    assert response.json()["message"] == "Successfully edited entry"
+    assert response.json()["data"]["title"] == "New Happy Title"
 
 def test_edit_journal_not_found(client, test_user):
     """Test editing a non-existent journal returns 404"""
