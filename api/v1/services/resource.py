@@ -1,50 +1,63 @@
-from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, or_
+from sqlalchemy.orm import Session, joinedload
 from typing import Tuple, List, Optional
-from api.utils.logger import logger
+from uuid import UUID
 from fastapi import HTTPException, status
+
+from api.utils.logger import logger
 from api.v1.models.resource.resource import Resource
 from api.v1.models.resource.resource_category import ResourceCategory
 from api.v1.schemas.resource import ResourceCreate, CategoryCreate, ResourceUpdate
-from uuid import UUID
 
 class ResourceService:
-    
+
     @staticmethod
-    def get_all_resources(session: Session, page: int, limit: int) -> Tuple[List[Resource], int]:
+    def get_resources(
+        session: Session, 
+        page: int, 
+        limit: int, 
+        query_str: Optional[str] = None, 
+        category_id: Optional[UUID] = None
+    ) -> Tuple[List[Resource], int]:
         """
-        Fetches resources with their related media and category data efficiently.
+        Unified method to fetch resources. 
+        Handles: Pagination, Sorting, Search (Title/Content/CategoryName), and Category Filtering.
         """
         skip = (page - 1) * limit
-        logger.info(f"Fetching resources page={page} limit={limit}")
+        logger.info(f"Fetching resources. Page={page}, Limit={limit}, Q='{query_str}', CatID={category_id}")
 
+        # 1. Base Query with Eager Loading
         query = session.query(Resource).options(
             joinedload(Resource.category),
             joinedload(Resource.media)
         )
 
-        total = query.count()
+        # 2. Join Category (Required for filtering/searching by category name)
+        query = query.join(Resource.category)
 
+        # 3. Apply Search Logic (if 'q' is provided)
+        if query_str:
+            search_filter = or_(
+                Resource.title.ilike(f"%{query_str}%"),
+                Resource.content.ilike(f"%{query_str}%"),
+                ResourceCategory.name.ilike(f"%{query_str}%")
+            )
+            query = query.filter(search_filter)
+
+        # 4. Apply Category Filter (if 'category_id' is provided)
+        if category_id:
+            query = query.filter(Resource.category_id == category_id)
+
+        # 5. Execute Count and Fetch
+        total = query.count()
         resources = query.order_by(desc(Resource.created_at)).offset(skip).limit(limit).all()
         
         return resources, total
 
-    @staticmethod
-    def create_category(session: Session, schema: CategoryCreate) -> ResourceCategory:
-        """Create a new resource category"""
-        existing_cat = ResourceCategory.fetch_one(session, name=schema.name)
-        if existing_cat:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Category '{schema.name}' already exists"
-            )
-
-        new_category = ResourceCategory(name=schema.name)
-        return new_category.insert(session)
+    # --- CRUD: RESOURCES ---
 
     @staticmethod
     def create_resource(session: Session, schema: ResourceCreate) -> Resource:
-        """Create a new resource"""
         category = ResourceCategory.fetch_one(session, id=schema.category_id)
         if not category:
             raise HTTPException(
@@ -58,10 +71,34 @@ class ResourceService:
             category_id=schema.category_id
         )
         return new_resource.insert(session)
-    
+
     @staticmethod
-    def delete_resource(session: Session, resource_id) -> None:
-        """Delete a resource by ID"""
+    def get_resource_by_id(session: Session, resource_id: UUID) -> Resource:
+        resource = Resource.fetch_one(session, id=resource_id)
+        if not resource:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Resource not found"
+            )
+        return resource
+
+    @staticmethod
+    def update_resource(session: Session, resource_id: UUID, schema: ResourceUpdate) -> Resource:
+        resource = Resource.fetch_one(session, id=resource_id)
+        if not resource:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Resource not found"
+            )
+        
+        resource.title = schema.title
+        resource.content = schema.content
+        session.commit()
+        session.refresh(resource)
+        return resource
+
+    @staticmethod
+    def delete_resource(session: Session, resource_id: UUID) -> None:
         resource = Resource.fetch_one(session, id=resource_id)
         if not resource:
             raise HTTPException(
@@ -70,44 +107,25 @@ class ResourceService:
             )
         resource.delete(session)
 
-    @staticmethod
-    def update_resource(session: Session, resource_id, schema: ResourceUpdate) -> Resource:
-        """Update an existing resource"""
-        resource = Resource.fetch_one(session, id=resource_id)
-        if not resource:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Resource not found"
-            )
-        
+    # --- CRUD: CATEGORIES ---
 
-        resource.title = schema.title
-        resource.content = schema.content
-
-        session.commit()
-        session.refresh(resource)
-        return resource
-    
     @staticmethod
-    def get_resource_by_id(session: Session, resource_id) -> Resource:
-        """Fetch a resource by ID"""
-        resource = Resource.fetch_one(session, id=resource_id)
-        if not resource:
+    def create_category(session: Session, schema: CategoryCreate) -> ResourceCategory:
+        existing_cat = ResourceCategory.fetch_one(session, name=schema.name)
+        if existing_cat:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Resource not found"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Category '{schema.name}' already exists"
             )
-        return resource
-    
+        new_category = ResourceCategory(name=schema.name)
+        return new_category.insert(session)
+
     @staticmethod
     def get_all_categories(session: Session) -> List[ResourceCategory]:
-        """Fetch all resource categories"""
-        categories = session.query(ResourceCategory).all()
-        return categories
-    
+        return session.query(ResourceCategory).all()
+
     @staticmethod
-    def get_category_by_id(session: Session, category_id) -> ResourceCategory:
-        """Fetch a resource category by ID"""
+    def get_category_by_id(session: Session, category_id: UUID) -> ResourceCategory:
         category = ResourceCategory.fetch_one(session, id=category_id)
         if not category:
             raise HTTPException(
@@ -115,22 +133,9 @@ class ResourceService:
                 detail="Resource Category not found"
             )
         return category
-    
-    @staticmethod
-    def delete_category(session: Session, category_id) -> None:
-        """Delete a resource category by ID"""
-        category = ResourceCategory.fetch_one(session, id=category_id)
-        if not category:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Resource Category not found"
-            )
-        category.delete(session)
-
 
     @staticmethod
-    def update_category(session: Session, category_id, schema: CategoryCreate) -> ResourceCategory:
-        """Update an existing resource category"""
+    def update_category(session: Session, category_id: UUID, schema: CategoryCreate) -> ResourceCategory:
         category = ResourceCategory.fetch_one(session, id=category_id)
         if not category:
             raise HTTPException(
@@ -138,6 +143,7 @@ class ResourceService:
                 detail="Resource Category not found"
             )
 
+        # Check unique name constraint (excluding current category)
         existing_cat = ResourceCategory.fetch_one(session, name=schema.name)
         if existing_cat and existing_cat.id != category_id:
             raise HTTPException(
@@ -146,83 +152,16 @@ class ResourceService:
             )
 
         category.name = schema.name
-
         session.commit()
         session.refresh(category)
         return category
-    
+
     @staticmethod
-    def get_resources_by_category(session: Session, category_id: UUID, page: int, limit: int) -> Tuple[List[Resource], int]:
-        """
-        Fetches resources by category with their related media and category data efficiently.
-        """
-        skip = (page - 1) * limit
-        logger.info(f"Fetching resources for category_id={category_id} page={page} limit={limit}")
-
-        query = session.query(Resource).options(
-            joinedload(Resource.category),
-            joinedload(Resource.media)
-        ).filter(Resource.category_id == category_id)
-
-        total = query.count()
-
-        resources = query.order_by(desc(Resource.created_at)).offset(skip).limit(limit).all()
-        
-        return resources, total
-    
-    @staticmethod
-    def get_resources_by_title(session: Session, title_substr: str, page: int, limit: int) -> Tuple[List[Resource], int]:
-        """
-        Fetches resources by title substring with their related media and category data efficiently.
-        """
-        skip = (page - 1) * limit
-        logger.info(f"Fetching resources with title containing '{title_substr}' page={page} limit={limit}")
-
-        query = session.query(Resource).options(
-            joinedload(Resource.category),
-            joinedload(Resource.media)
-        ).filter(Resource.title.ilike(f"%{title_substr}%"))
-
-        total = query.count()
-
-        resources = query.order_by(desc(Resource.created_at)).offset(skip).limit(limit).all()
-        
-        return resources, total
-    
-    @staticmethod
-    def search_resources(
-        session: Session, 
-        query_str: str, 
-        page: int, 
-        limit: int,
-        category_id: Optional[UUID] = None
-    ) -> Tuple[List[Resource], int]:
-        """
-        Search resources by title, content, or category name.
-        Optional: Filter by specific category_id.
-        """
-        skip = (page - 1) * limit
-        logger.info(f"Search query='{query_str}' cat={category_id} page={page}")
-
-        query = session.query(Resource).options(
-            joinedload(Resource.category),
-            joinedload(Resource.media)
-        )
-
-        query = query.join(Resource.category)
-
-        if query_str:
-            search_filter = or_(
-                Resource.title.ilike(f"%{query_str}%"),
-                Resource.content.ilike(f"%{query_str}%"),
-                ResourceCategory.name.ilike(f"%{query_str}%")
+    def delete_category(session: Session, category_id: UUID) -> None:
+        category = ResourceCategory.fetch_one(session, id=category_id)
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Resource Category not found"
             )
-            query = query.filter(search_filter)
-
-        if category_id:
-            query = query.filter(Resource.category_id == category_id)
-
-        total = query.count()
-        resources = query.order_by(desc(Resource.created_at)).offset(skip).limit(limit).all()
-        
-        return resources, total
+        category.delete(session)
