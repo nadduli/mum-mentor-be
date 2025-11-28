@@ -75,7 +75,6 @@ class CommunityService:
             if existing_like:
                 # Unlike: Delete the existing like
                 session.delete(existing_like)
-                session.commit()
                 is_liked = False
                 logger.info(f"User {user_id} unliked post {post_id}")
             else:
@@ -85,13 +84,18 @@ class CommunityService:
                     user_id=user_id
                 )
                 session.add(new_like)
-                session.commit()
                 is_liked = True
                 logger.info(f"User {user_id} liked post {post_id}")
-            
+
+            # Make pending changes available for the count query
+            session.flush()
+
             # Get updated likes count
             likes_count = session.query(PostLike).filter(PostLike.post_id == post_id).count()
-            
+
+            # Commit the whole transaction
+            session.commit()
+
             return (is_liked, likes_count)
             
         except Exception as e:
