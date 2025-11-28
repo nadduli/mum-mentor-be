@@ -34,5 +34,5 @@ async def get_journal_entry_by_category(
         return fail_response(
             status_code=500,
             message="Error retrieving journal entries",
-            data=str(e)
+            context=str(e)
         )

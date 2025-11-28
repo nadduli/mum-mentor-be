@@ -39,7 +39,7 @@ from .journal import journal_entry_router
 from .resource import router as resource_router
 from .resource_media import router as resource_media_router
 from .community import router as community_router
-from .community_posts import router as community_posts_router
+#from .community_posts import router as community_posts_router
 
 
 app = APIRouter()
@@ -91,7 +91,7 @@ app.include_router(faq_router)
 app.include_router(user_settings_router)
 app.include_router(downloads_router)
 app.include_router(memories_router)
-app.include_router(community_posts_router)
+#app.include_router(community_posts_router)
 app.include_router(community_router)
 app.include_router(resource_router)
 

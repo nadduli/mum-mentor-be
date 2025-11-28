@@ -12,9 +12,14 @@ from .community.posts import Post
 from .community.post_photos import PostPhoto
 from .community.post_likes import PostLike
 from .community.post_comments import PostComment
+from .journal import Journal
+from .journal.journal_photos import JournalPhoto
+from .journal.journal_likes import JournalLike
+from .journal.journal_comments import JournalComment
+from .journal.journal_category import JournalCategory
 
 __all__ = [
-    "Milestone", 
+    "Milestone",
     "Category",
     "Resource",
     "ResourceCategory",
@@ -25,6 +30,10 @@ __all__ = [
     "Post",
     "PostPhoto",
     "PostLike",
-    "PostComment"
+    "PostComment",
+    "Journal",
+    "JournalPhoto",
+    "JournalLike",
+    "JournalComment",
+    "JournalCategory",
 ]
-
