@@ -12,6 +12,8 @@ from .admin import router as admin_router
 from .faq import router as faq_router
 from .user_settings import router as user_settings_router
 from .memories import router as memories_router
+from .community_posts import router as  community_posts_router
+
 
 from .task.list_task import router as task_list_router
 from .task.create_task import router as create_task_router
@@ -36,10 +38,11 @@ from .albums import router as albums_router
 from .album_memories import router as album_memories_router
 from .image import router as image_router
 from .journal import journal_entry_router
+from .journal import router as journal_router
 # from .resource import router as resource_router
 from .resource_media import router as resource_media_router
 from .community import router as community_router
-#from .community_posts import router as community_posts_router
+from .community_posts import router as community_posts_router
 from .resource.save_resource_for_later import save_resources_router
 from .resources import router as resource_router
 
@@ -93,11 +96,13 @@ app.include_router(faq_router)
 app.include_router(user_settings_router)
 app.include_router(downloads_router)
 app.include_router(memories_router)
-#app.include_router(community_posts_router)
-app.include_router(community_router)
-#app.include_router(resource_router)
-app.include_router(save_resources_router)
 
+app.include_router(community_posts_router)
+
+app.include_router(journal_router)
+
+app.include_router(community_router)
+app.include_router(save_resources_router)
 
 # Backwards-compatibility
 contact_router = app
