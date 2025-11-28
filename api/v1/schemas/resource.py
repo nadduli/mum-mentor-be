@@ -38,3 +38,7 @@ class PaginatedResourceResponse(BaseModel):
     page: int
     limit: int
     total_pages: int
+
+
+class CreateResourceBookmark(BaseModel):
+    resource_id: uuid.UUID
