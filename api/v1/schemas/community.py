@@ -27,3 +27,13 @@ class PostResponseWrapper(BaseModel):
     status: str
     message: str
     data: PostResponse
+
+class LikeToggleResponse(BaseModel):
+    """Response after toggling a like"""
+    is_liked: bool
+    likes_count: int
+
+class LikeResponseWrapper(BaseModel):
+    status: str
+    message: str
+    data: LikeToggleResponse
