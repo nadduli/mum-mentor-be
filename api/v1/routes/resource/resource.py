@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 import math
 
 from api.db.database import get_db
+from api.utils.responses import fail_response, success_response
 from api.v1.services.resource import ResourceService
-from api.v1.schemas.resource import PaginatedResourceResponse
+from api.v1.schemas.resource import PaginatedResourceResponse, ResourceResponse
 
 router = APIRouter(prefix="/resources", tags=["Resources"])
 
