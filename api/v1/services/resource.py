@@ -25,3 +25,29 @@ class ResourceService:
         resources = query.order_by(desc(Resource.created_at)).offset(skip).limit(limit).all()
         
         return resources, total
+
+    @staticmethod
+    def search_by_title(
+            session: Session,
+            title: str,
+            page: int,
+            limit: int
+    ):
+        """
+        Search resources by partial + case-insensitive title match.
+        """
+
+        # Paginated query
+        stmt = (
+            select(Resource)
+            .where(Resource.title.ilike(f"%{title}%"))
+            .offset((page - 1) * limit)
+            .limit(limit)
+        )
+        resources = session.scalars(stmt).all()
+
+        # Total count
+        count_stmt = select(Resource).where(Resource.title.ilike(f"%{title}%"))
+        total = len(session.scalars(count_stmt).all())
+
+        return resources, total
