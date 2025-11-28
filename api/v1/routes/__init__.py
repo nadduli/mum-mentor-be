@@ -36,13 +36,12 @@ from .albums import router as albums_router
 from .album_memories import router as album_memories_router
 from .image import router as image_router
 from .journal import journal_entry_router
+from .journal import router as journal_router
 # from .resource import router as resource_router
 from .resource_media import router as resource_media_router
 from .community import router as community_router
 #from .community_posts import router as community_posts_router
 from .resource.save_resource_for_later import save_resources_router
-
-from .journal import router as journal_router
 
 app = APIRouter()
 app.mount("/files", StaticFiles(directory="app/uploads"), name="files")

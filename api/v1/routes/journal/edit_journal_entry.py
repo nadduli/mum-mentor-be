@@ -4,7 +4,7 @@ import uuid
 
 from api.db.database import get_db
 from api.v1.dependencies.auth import get_current_user
-from api.v1.schemas.journal import JournalEdit, JournalResponse, JournalResponseData
+from api.v1.schemas.journal import JournalEdit, JournalResponse, JournalData
 from api.v1.services.journal import JournalService
 from api.utils.responses import success_response
 
@@ -25,5 +25,5 @@ def edit_journal_entry(
     return success_response(
         status_code=status.HTTP_200_OK,
         message="Journal entry updated successfully",
-        data=JournalResponseData.model_validate(updated_journal).model_dump()
+        data=JournalData.model_validate(updated_journal).model_dump()
     )
