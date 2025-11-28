@@ -35,6 +35,12 @@ from .album import album_router
 from .albums import router as albums_router
 from .album_memories import router as album_memories_router
 from .image import router as image_router
+from .journal import journal_entry_router
+# from .resource import router as resource_router
+from .resource_media import router as resource_media_router
+from .community import router as community_router
+#from .community_posts import router as community_posts_router
+from .resource.save_resource_for_later import save_resources_router
 
 from .journal import router as journal_router
 
@@ -42,6 +48,7 @@ app = APIRouter()
 app.mount("/files", StaticFiles(directory="app/uploads"), name="files")
 
 app.include_router(image_router)
+app.include_router(journal_entry_router)
 app.include_router(auth_router)
 app.include_router(waitlist_router)
 app.include_router(google_auth_router)
@@ -73,8 +80,11 @@ app.include_router(album_memories_router)
 # AI Chat routes
 app.include_router(ai_chat_router)
 
-# Milestone router - simplified version only
+# Milestone router
 app.include_router(milestone_router)
+
+# Resource Media routes (Community Posts)
+app.include_router(resource_media_router)
 
 # Other routes
 app.include_router(user_profile_router)
@@ -84,6 +94,8 @@ app.include_router(user_settings_router)
 app.include_router(downloads_router)
 app.include_router(memories_router)
 app.include_router(journal_router)
+app.include_router(community_router)
+app.include_router(save_resources_router)
 
 # Backwards-compatibility
 contact_router = app
