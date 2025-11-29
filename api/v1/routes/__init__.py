@@ -44,10 +44,12 @@ from .resource_media import router as resource_media_router
 from .community import router as community_router
 from .community_posts import router as community_posts_router
 from .resource.save_resource_for_later import save_resources_router
+from .resources import router as resource_router
 
 app = APIRouter()
 app.mount("/files", StaticFiles(directory="app/uploads"), name="files")
 
+app.include_router(resource_router)
 app.include_router(image_router)
 app.include_router(journal_entry_router)
 app.include_router(auth_router)
