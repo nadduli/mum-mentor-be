@@ -41,3 +41,35 @@ class CommunityPostService:
             )
             self.db.rollback()
             return None, (500, "Failed to create post")
+
+    def delete_post(self, *, post_id: UUID, user_id: UUID) -> Tuple[bool, Optional[Tuple[int, str]]]:
+        """Delete a community post if it belongs to the given user.
+
+        Returns:
+            (True, None) on success.
+            (False, (status_code, message)) on failure.
+        """
+        try:
+            # Fetch the post
+            post = self.db.query(Post).filter(Post.id == post_id).first()
+            if not post:
+                return False, (404, "Post not found")
+
+            # Authorization check
+            if post.user_id != user_id:
+                return False, (403, "Not authorized to delete this post")
+
+            # Perform deletion
+            self.db.delete(post)
+            self.db.commit()
+            logger.info("Community post deleted | post_id=%s | user_id=%s", post_id, user_id)
+            return True, None
+        except Exception as exc:
+            self.db.rollback()
+            logger.error(
+                "Error deleting community post | post_id=%s | user_id=%s | error=%s",
+                post_id,
+                user_id,
+                exc,
+            )
+            return False, (500, "Failed to delete post")

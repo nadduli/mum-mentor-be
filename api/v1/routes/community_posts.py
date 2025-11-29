@@ -39,3 +39,25 @@ def create_post(
         message="Post created successfully",
         data=response.model_dump(),
     )
+
+from fastapi import HTTPException
+from uuid import UUID
+
+@router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a community post")
+def delete_post(
+    post_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a community post if the current user is the owner.
+
+    Returns 204 on success, otherwise raises an HTTPException with the appropriate
+    status code and error message.
+    """
+    service = CommunityPostService(db)
+    success, error = service.delete_post(post_id=post_id, user_id=current_user.id)
+    if not success:
+        status_code, message = error
+        raise HTTPException(status_code=status_code, detail=message)
+    # FastAPI automatically returns an empty body for 204
+    return

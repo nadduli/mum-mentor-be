@@ -98,3 +98,62 @@ def test_create_post_server_error(mock_db_session, monkeypatch):
 
     response = client.post("/api/v1/community/posts/", json={"title": "x", "content": "y"})
     assert response.status_code == 500
+
+
+def test_delete_post_success(mock_db_session, monkeypatch):
+    user = _make_user()
+    app.dependency_overrides[get_current_user] = lambda: user
+    post_id = uuid.uuid4()
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.delete_post",
+        lambda self, post_id, user_id: (True, None),
+    )
+
+    response = client.delete(f"/api/v1/community/posts/{post_id}")
+    assert response.status_code == 204
+
+
+def test_delete_post_not_found(mock_db_session, monkeypatch):
+    user = _make_user()
+    app.dependency_overrides[get_current_user] = lambda: user
+    post_id = uuid.uuid4()
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.delete_post",
+        lambda self, post_id, user_id: (False, (404, "Post not found")),
+    )
+
+    response = client.delete(f"/api/v1/community/posts/{post_id}")
+    assert response.status_code == 404
+    assert response.json()["message"] == "Post not found"
+
+
+def test_delete_post_forbidden(mock_db_session, monkeypatch):
+    user = _make_user()
+    app.dependency_overrides[get_current_user] = lambda: user
+    post_id = uuid.uuid4()
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.delete_post",
+        lambda self, post_id, user_id: (False, (403, "Not authorized to delete this post")),
+    )
+
+    response = client.delete(f"/api/v1/community/posts/{post_id}")
+    assert response.status_code == 403
+    assert response.json()["message"] == "Not authorized to delete this post"
+
+
+def test_delete_post_server_error(mock_db_session, monkeypatch):
+    user = _make_user()
+    app.dependency_overrides[get_current_user] = lambda: user
+    post_id = uuid.uuid4()
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.delete_post",
+        lambda self, post_id, user_id: (False, (500, "Failed to delete post")),
+    )
+
+    response = client.delete(f"/api/v1/community/posts/{post_id}")
+    assert response.status_code == 500
+    assert response.json()["message"] == "Failed to delete post"
