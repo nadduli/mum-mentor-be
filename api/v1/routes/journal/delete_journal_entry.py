@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 import uuid
 
 from api.db.database import get_db
-from api.v1.dependencies.auth import get_current_user
+from api.utils.deps import get_current_user
+from api.v1.models.user.user import User
 from api.v1.services.journal import JournalService
 from api.utils.responses import success_response
 
@@ -13,7 +14,7 @@ router = APIRouter(prefix="/journal", tags=["Journal"])
 def delete_journal_entry(
     entry_id: uuid.UUID,
     session: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Delete a specific journal entry.

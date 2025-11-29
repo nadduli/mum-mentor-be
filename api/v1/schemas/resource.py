@@ -42,3 +42,21 @@ class PaginatedResourceResponse(BaseModel):
 
 class CreateResourceBookmark(BaseModel):
     resource_id: uuid.UUID
+
+from pydantic import BaseModel
+from uuid import UUID
+
+# --- Category Schemas ---
+class CategoryCreate(BaseModel):
+    name: str
+
+# --- Resource Schemas ---
+class ResourceCreate(BaseModel):
+    title: str
+    content: str
+    category_id: UUID
+
+class ResourceUpdate(BaseModel):
+    title: str
+    content: str
+    category_id: UUID | None = None

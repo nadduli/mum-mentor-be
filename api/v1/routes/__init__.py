@@ -44,11 +44,13 @@ from api.v1.routes.resource.resource_media import router as resource_media_route
 from .community import router as community_router
 from .community_posts import router as community_posts_router
 from .resource.save_resource_for_later import save_resources_router
-from api.v1.routes.resource.resource import router as resource_router
+from api.v1.routes.resource.resource import router as search_resource_router
+from .resources import router as resource_router
 
 app = APIRouter()
 app.mount("/files", StaticFiles(directory="app/uploads"), name="files")
 
+app.include_router(resource_router)
 app.include_router(image_router)
 app.include_router(journal_entry_router)
 app.include_router(auth_router)
@@ -103,6 +105,7 @@ app.include_router(journal_router)
 app.include_router(community_router)
 app.include_router(save_resources_router)
 app.include_router(resource_router)
+app.include_router(search_resource_router)
 
 
 # Backwards-compatibility
