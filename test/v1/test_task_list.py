@@ -35,6 +35,7 @@ def override_get_db():
     finally:
         db.close()
 
+
 TEST_USER_ID = uuid.uuid4()
 
 
@@ -67,7 +68,7 @@ def setup_database():
         email_verified=True,
         phone_verified=True,
         is_active=True,
-        role="user"
+        role="user",
     )
     db.add(user)
     db.commit()
@@ -76,7 +77,6 @@ def setup_database():
     yield
 
     Base.metadata.drop_all(bind=engine)
-
 
 
 class TestListTasks:
@@ -91,7 +91,7 @@ class TestListTasks:
                 name=f"Task {i}",
                 description=f"Description {i}",
                 status="pending",
-                due_date=datetime.now(timezone.utc) + timedelta(days=i)
+                due_date=datetime.now(timezone.utc) + timedelta(days=i),
             )
             db.add(task)
 

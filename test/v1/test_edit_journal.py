@@ -16,6 +16,7 @@ TEST_DATABASE_URL = "sqlite:///./test_journal_new.db"
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def override_get_db():
     db = TestingSessionLocal()
     try:
@@ -23,13 +24,16 @@ def override_get_db():
     finally:
         db.close()
 
+
 app.dependency_overrides[get_db] = override_get_db
+
 
 @pytest.fixture(scope="function")
 def client():
     Base.metadata.create_all(bind=engine)
     yield TestClient(app)
     Base.metadata.drop_all(bind=engine)
+
 
 @pytest.fixture(scope="function")
 def test_user(client):
@@ -41,6 +45,7 @@ def test_user(client):
     app.dependency_overrides[get_current_user] = lambda: user
     return user
 
+
 @pytest.fixture(scope="function")
 def user_journal(client, test_user):
     db = TestingSessionLocal()
@@ -49,7 +54,7 @@ def user_journal(client, test_user):
         title="Old Title",
         content="Old content",
         mood="Sad",
-        entry_date=datetime.now()
+        entry_date=datetime.now(),
     )
     db.add(journal)
     db.commit()
@@ -58,6 +63,7 @@ def user_journal(client, test_user):
     db.close()
     return j_id
 
+
 def test_edit_journal_success(client, test_user, user_journal):
     """Test editing title and mood"""
     payload = {
@@ -65,14 +71,15 @@ def test_edit_journal_success(client, test_user, user_journal):
         "mood": "Happy",
         "thoughts": "I am feeling better now",
         "category": "Health",
-        "photos": ["http://img.com/1.jpg"]
+        "photos": ["http://img.com/1.jpg"],
     }
-    
+
     response = client.patch(f"/api/v1/journal/{user_journal}", json=payload)
-    
+
     assert response.status_code == 200
     assert response.json()["message"] == "Successfully edited entry"
     assert response.json()["data"]["title"] == "New Happy Title"
+
 
 def test_edit_journal_not_found(client, test_user):
     """Test editing a non-existent journal returns 404"""

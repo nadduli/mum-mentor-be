@@ -15,11 +15,13 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_database():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
 
 @pytest.fixture()
 def db_session():
@@ -29,6 +31,7 @@ def db_session():
     finally:
         session.close()
 
+
 def override_get_db():
     db = TestingSessionLocal()
     try:
@@ -36,10 +39,12 @@ def override_get_db():
     finally:
         db.close()
 
+
 # Override dependency
 app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
+
 
 def test_track_download_anonymous():
     payload = {
@@ -48,7 +53,7 @@ def test_track_download_anonymous():
         "file_name": "nora.apk",
         "file_url": "https://cdn.example.com/nora.apk",
         "source": "landing_page",
-        "extra_metadata": {"campaign": "launch"}
+        "extra_metadata": {"campaign": "launch"},
     }
     resp = client.post("/api/v1/downloads/track", json=payload)
     assert resp.status_code == 201
