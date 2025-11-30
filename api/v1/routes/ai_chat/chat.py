@@ -45,12 +45,10 @@ def list_user_conversations(
         )
 
         # Fetch all user sessions
-        all_sessions = ChatSession.fetch_all(db, user_id=current_user.id)
-        total_count = len(all_sessions)
+        query = db.query(ChatSession).filter(ChatSession.user_id == current_user.id)
+        total_count = query.count()
 
-        start = (page - 1) * per_page
-        end = start + per_page
-        paginated_sessions = all_sessions[start:end]
+        paginated_sessions = query.order_by(ChatSession.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
 
         data = [
             {
