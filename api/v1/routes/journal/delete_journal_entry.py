@@ -19,7 +19,7 @@ def delete_journal_entry(
     """
     Delete a specific journal entry.
     """
-    JournalService.delete_journal(session, entry_id, current_user.id)
+    JournalService.delete_journal(session, entry_id, uuid.UUID(current_user.id))
     
     return success_response(
         status_code=status.HTTP_200_OK,
