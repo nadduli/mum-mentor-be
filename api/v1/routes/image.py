@@ -72,7 +72,7 @@ async def link_image_to_album(
 
 
 @router.delete("/delete/{photo_id}", status_code=204)
-async def delete_photo(photo_id: str, db: Session = Depends(get_db)):
+async def delete_photo(photo_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Delete a photo by ID, remove it from storage and database.
     """
