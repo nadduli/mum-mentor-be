@@ -25,9 +25,10 @@ router = APIRouter(prefix="/memories", tags=["Memories"])
     description="get a list of memories in an album",
     response_model=AlbumMemoriesResponse,
 )
-def get_album_memories(
-    album_id: UUID,
-    db: Session = Depends(get_db),
+def get_album_memories(  
+    album_id: UUID,  
+    db: Session = Depends(get_db),  
+    current_user: User = Depends(get_current_user),  
 ):
     """
     Get all memories for a specific album.

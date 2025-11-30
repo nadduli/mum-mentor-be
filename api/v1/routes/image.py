@@ -6,9 +6,10 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from api.db.database import get_db
-from api.utils.deps import get_current_user
+from api.utils.deps import get_admin_user, get_current_user
 from api.utils.responses import fail_response, success_response
 from api.v1.models.photos import Photos
+from api.v1.models.user.user import User
 from api.v1.schemas.image_schema import PhotoResponse
 from api.v1.schemas.memories import MemoryCreateRequest
 from api.v1.services.image import ImageService
@@ -19,7 +20,6 @@ UPLOAD_DIR = "app/uploads"
 router = APIRouter(prefix="/images", tags=["Images"])
 
 
-@router.post("/upload", response_model=PhotoResponse, status_code=201)
 async def upload_photo(
     request: Request, file: UploadFile, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
