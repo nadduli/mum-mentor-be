@@ -1,3 +1,4 @@
+# This is for development only - for those who'd rather use a container
 services:
   db:
     image: postgres:17.2-bookworm
