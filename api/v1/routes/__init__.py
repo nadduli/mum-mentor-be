@@ -34,7 +34,6 @@ from .profile_setup import router as profile_setup_router
 from .milestone import router as milestone_router
 
 from .album import album_router
-from .albums import router as albums_router
 from .album_memories import router as album_memories_router
 from .image import router as image_router
 from .journal import journal_entry_router
@@ -78,7 +77,6 @@ app.include_router(profile_setup_router)
 
 # Album routes
 app.include_router(album_router)
-app.include_router(albums_router)
 app.include_router(album_memories_router)
 
 # AI Chat routes
