@@ -7,24 +7,31 @@ from fastapi import HTTPException, status
 from api.utils.logger import logger
 from api.v1.models.resource.resource import Resource
 from api.v1.models.resource.resource_category import ResourceCategory
-from api.v1.schemas.resource import ResourceCreate, CategoryCreate, ResourceUpdate
+from api.v1.schemas.resource import (
+    ResourceCreate, CategoryCreate, ResourceUpdate
+)
+
 
 class ResourceService:
 
     @staticmethod
     def get_resources(
-        session: Session, 
-        page: int, 
-        limit: int, 
-        query_str: Optional[str] = None, 
+        session: Session,
+        page: int,
+        limit: int,
+        query_str: Optional[str] = None,
         category_id: Optional[UUID] = None
     ) -> Tuple[List[Resource], int]:
         """
-        Unified method to fetch resources. 
-        Handles: Pagination, Sorting, Search (Title/Content/CategoryName), and Category Filtering.
+        Unified method to fetch resources.
+        Handles: Pagination, Sorting, Search (Title/Content/CategoryName),
+        and Category Filtering.
         """
         skip = (page - 1) * limit
-        logger.info(f"Fetching resources. Page={page}, Limit={limit}, Q='{query_str}', CatID={category_id}")
+        logger.info(
+            f"Fetching resources. Page={page}, Limit={limit}, "
+            f"Q='{query_str}', CatID={category_id}"
+        )
 
         # 1. Base Query with Eager Loading
         query = session.query(Resource).options(
@@ -50,16 +57,18 @@ class ResourceService:
 
         # 5. Execute Count and Fetch
         total = query.count()
-        resources = query.order_by(desc(Resource.created_at)).offset(skip).limit(limit).all()
-        
+        resources = query.order_by(
+            desc(Resource.created_at)
+        ).offset(skip).limit(limit).all()
+
         return resources, total
 
     @staticmethod
     def search_by_title(
-            session: Session,
-            title: str,
-            page: int,
-            limit: int
+        session: Session,
+        title: str,
+        page: int,
+        limit: int
     ):
         """
         Search resources by partial + case-insensitive title match.
@@ -107,7 +116,9 @@ class ResourceService:
         return resource
 
     @staticmethod
-    def update_resource(session: Session, resource_id: UUID, schema: ResourceUpdate) -> Resource:
+    def update_resource(
+        session: Session, resource_id: UUID, schema: ResourceUpdate
+    ) -> Resource:
         resource = Resource.fetch_one(session, id=resource_id)
         if not resource:
             raise HTTPException(
@@ -134,7 +145,9 @@ class ResourceService:
     # --- CRUD: CATEGORIES ---
 
     @staticmethod
-    def create_category(session: Session, schema: CategoryCreate) -> ResourceCategory:
+    def create_category(
+        session: Session, schema: CategoryCreate
+    ) -> ResourceCategory:
         existing_cat = ResourceCategory.fetch_one(session, name=schema.name)
         if existing_cat:
             raise HTTPException(
@@ -149,7 +162,9 @@ class ResourceService:
         return session.query(ResourceCategory).all()
 
     @staticmethod
-    def get_category_by_id(session: Session, category_id: UUID) -> ResourceCategory:
+    def get_category_by_id(
+        session: Session, category_id: UUID
+    ) -> ResourceCategory:
         category = ResourceCategory.fetch_one(session, id=category_id)
         if not category:
             raise HTTPException(
@@ -159,7 +174,9 @@ class ResourceService:
         return category
 
     @staticmethod
-    def update_category(session: Session, category_id: UUID, schema: CategoryCreate) -> ResourceCategory:
+    def update_category(
+        session: Session, category_id: UUID, schema: CategoryCreate
+    ) -> ResourceCategory:
         category = ResourceCategory.fetch_one(session, id=category_id)
         if not category:
             raise HTTPException(

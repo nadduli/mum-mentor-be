@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 from api.db.database import get_db
 from api.utils.deps import get_current_user
@@ -40,8 +41,7 @@ def create_post(
         data=response.model_dump(),
     )
 
-from fastapi import HTTPException
-from uuid import UUID
+
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a community post")
 def delete_post(
