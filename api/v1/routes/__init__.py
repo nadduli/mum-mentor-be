@@ -17,7 +17,7 @@ from .image import router as image_router
 from .journal import router as journal_router
 from .memories import router as memories_router
 from .milestone import router as milestone_router
-from .user_profile import router as profile_router
+from .user_profile import router as profile_router, old_profile_router1, old_profile_router2
 from .resource import router as resource_router
 from .search import router as search_router
 from .task import router as task_router
@@ -34,6 +34,8 @@ app.mount("/files", StaticFiles(directory="app/uploads"), name="files")
 app.include_router(auth_router)
 app.include_router(google_auth_router)
 app.include_router(profile_router)
+app.include_router(old_profile_router1)
+app.include_router(old_profile_router2)
 app.include_router(user_settings_router)
 
 # --- Child Profile ---
