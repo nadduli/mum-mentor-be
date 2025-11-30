@@ -1,5 +1,6 @@
 import uuid
 import pytest
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -18,16 +19,10 @@ from api.utils.security import hash_password
 SQLALCHEMY_DB_URL = "sqlite:///:memory:"
 
 engine = create_engine(
-    SQLALCHEMY_DB_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool
+    SQLALCHEMY_DB_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool
 )
 
-TestingSessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
 
@@ -92,19 +87,12 @@ def seed_resource(title: str, content="Sample content"):
     db = TestingSessionLocal()
 
     # Create a valid category first
-    category = ResourceCategory(
-        id=uuid.uuid4(),
-        name="Test Category"
-    )
+    category = ResourceCategory(id=uuid.uuid4(), name="Test Category")
     db.add(category)
     db.commit()
 
     # Create resource linked to category
-    item = Resource(
-        title=title,
-        content=content,
-        category_id=category.id
-    )
+    item = Resource(title=title, content=content, category_id=category.id)
 
     db.add(item)
     db.commit()
