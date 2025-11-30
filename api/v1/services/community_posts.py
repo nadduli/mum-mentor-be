@@ -64,7 +64,7 @@ class CommunityPostService:
             self.db.commit()
             logger.info("Community post deleted | post_id=%s | user_id=%s", post_id, user_id)
             return True, None
-        except Exception as exc:
+        except SQLAlchemyError as exc:
             self.db.rollback()
             logger.error(
                 "Error deleting community post | post_id=%s | user_id=%s | error=%s",
