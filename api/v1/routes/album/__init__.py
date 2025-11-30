@@ -1,3 +1,8 @@
-from .get_album_with_memories import album_router
+from fastapi import APIRouter
 
-__all__ = ["album_router"]
+from .routes import album_router
+
+router = APIRouter(prefix="/album", tags=["Albums"])
+router.include_router(album_router)
+
+__all__ = ["router"]
