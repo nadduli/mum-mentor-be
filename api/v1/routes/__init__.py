@@ -21,12 +21,12 @@ from .task.edit_task import router as edit_task_router
 from .task.toggle_completion import router as toggle_completion_router
 from .task.delete_task import router as delete_task_router
 
-from .child_profile.create_child_profile import router as create_child_profile_router
-from .child_profile.get_child_profile import router as get_child_profile_router
-from .child_profile.list_child_profiles import router as list_child_profiles_router
-from .child_profile.update_child_profile import router as update_child_profile_router
-from .child_profile.delete_child_profile import router as delete_child_profile_router
-from .child_profile.upload_picture import router as upload_child_picture_router
+from .child_profile.routes import router as create_child_profile_router
+from .child_profile.routes import router as get_child_profile_router
+from .child_profile.routes import router as list_child_profiles_router
+from .child_profile.routes import router as update_child_profile_router
+from .child_profile.routes import router as delete_child_profile_router
+from .child_profile.routes import router as upload_child_picture_router
 
 from .ai_chat import router as ai_chat_router
 from .profile_setup import router as profile_setup_router
