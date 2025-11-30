@@ -15,11 +15,11 @@ from .memories import router as memories_router
 from .community_posts import router as  community_posts_router
 
 
-from .task.list_task import router as task_list_router
-from .task.create_task import router as create_task_router
-from .task.edit_task import router as edit_task_router
-from .task.toggle_completion import router as toggle_completion_router
-from .task.delete_task import router as delete_task_router
+from .task.routes import router as task_list_router
+from .task.routes import router as create_task_router
+from .task.routes import router as edit_task_router
+from .task.routes import router as toggle_completion_router
+from .task.routes import router as delete_task_router
 
 from .child_profile.routes import router as create_child_profile_router
 from .child_profile.routes import router as get_child_profile_router
