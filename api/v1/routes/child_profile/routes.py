@@ -1,69 +1,28 @@
 """
-Route for creating a child profile.
-"""
-
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
-
-from api.db.database import get_db
-from api.utils.deps import get_current_user
-from api.v1.models.user.user import User
-from api.v1.schemas.child_profile import CreateChildProfileRequest
-from api.v1.services.child_profile_service import ChildProfileService
-from api.utils.responses import success_response, fail_response
-from api.utils.logger import logger
-
-"""
-Route for listing all child profiles for the current user.
-"""
-
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
-
-from api.db.database import get_db
-from api.utils.deps import get_current_user
-from api.v1.models.user.user import User
-from api.v1.services.child_profile_service import ChildProfileService
-from api.utils.responses import success_response, fail_response
-from api.utils.logger import logger
-
-"""
-Route for updating a child profile.
+This module contains the API endpoints for managing child profiles.
 """
 
 from uuid import UUID
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
+from pathlib import Path
 
-from api.db.database import get_db
-from api.utils.deps import get_current_user
-from api.v1.models.user.user import User
-from api.v1.schemas.child_profile import UpdateChildProfileRequest
-from api.v1.services.child_profile_service import ChildProfileService
-from api.utils.responses import success_response, fail_response
-from api.utils.logger import logger
-
-"""
-Route for uploading child profile picture.
-"""
-
-from uuid import UUID
 from fastapi import APIRouter, Depends, status, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from api.db.database import get_db
 from api.utils.deps import get_current_user
+from api.utils.logger import logger
+from api.utils.responses import success_response, fail_response
 from api.v1.models.user.user import User
+from api.v1.schemas.child_profile import (
+    CreateChildProfileRequest,
+    UpdateChildProfileRequest,
+)
 from api.v1.services.child_profile_service import ChildProfileService
 from api.v1.services.child_profile_image_upload import (
     save_child_profile_image,
     delete_child_profile_image,
 )
-from api.utils.responses import success_response, fail_response
-from api.utils.logger import logger
-from pathlib import Path
-
 
 router = APIRouter(prefix="/child-profiles", tags=["Child Profiles"])
 
@@ -88,7 +47,9 @@ async def upload_child_profile_picture(
     Maximum size: 5MB
     """
     logger.info(
-        f"Uploading profile picture for child {child_id} by user {current_user.id}"
+        "Uploading profile picture for child %s by user %s",
+        child_id,
+        current_user.id,
     )
 
     try:
@@ -111,9 +72,6 @@ async def upload_child_profile_picture(
         # Upload new image
         image_url = await save_child_profile_image(file)
 
-        # Update database
-        from api.v1.schemas.child_profile import UpdateChildProfileRequest
-
         update_request = UpdateChildProfileRequest(profile_picture_url=image_url)
 
         updated_child = ChildProfileService.update_child_profile(
@@ -127,14 +85,11 @@ async def upload_child_profile_picture(
         )
 
     except Exception as e:
-        logger.error(f"Error uploading profile picture for child {child_id}: {e}")
-        return fail_response(
-            status_code=getattr(
-                e, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR
-            ),
-            message=getattr(e, "detail", "Failed to upload profile picture"),
-            context={"error": str(e)},
-        )
+        logger.error("Error uploading profile picture for child %s: %s", child_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to upload profile picture",
+        ) from e
 
 
 @router.get("/avatar/{filename}", status_code=status.HTTP_200_OK)
@@ -167,9 +122,6 @@ async def get_child_avatar(filename: str):
     return FileResponse(path=str(file_path), media_type=media_type, filename=filename)
 
 
-router = APIRouter(prefix="/child-profiles", tags=["Child Profiles"])
-
-
 @router.patch("/{child_id}", status_code=status.HTTP_200_OK)
 def update_child_profile(
     child_id: UUID,
@@ -182,7 +134,7 @@ def update_child_profile(
 
     Only fields provided in the request will be updated (partial update).
     """
-    logger.info(f"Updating child profile {child_id} for user {current_user.id}")
+    logger.info("Updating child profile %s for user %s", child_id, current_user.id)
 
     try:
         child = ChildProfileService.update_child_profile(
@@ -196,17 +148,11 @@ def update_child_profile(
         )
 
     except Exception as e:
-        logger.error(f"Error updating child profile {child_id}: {e}")
-        return fail_response(
-            status_code=getattr(
-                e, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR
-            ),
-            message=getattr(e, "detail", "Failed to update child profile"),
-            context={"error": str(e)},
-        )
-
-
-router = APIRouter(prefix="/child-profiles", tags=["Child Profiles"])
+        logger.error("Error updating child profile %s: %s", child_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update child profile",
+        ) from e
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
@@ -218,7 +164,7 @@ def list_child_profiles(
 
     Returns an empty list if the user has no children.
     """
-    logger.info(f"Listing child profiles for user {current_user.id}")
+    logger.info("Listing child profiles for user %s", current_user.id)
 
     try:
         children = ChildProfileService.get_all_child_profiles(
@@ -232,33 +178,11 @@ def list_child_profiles(
         )
 
     except Exception as e:
-        logger.error(f"Error listing child profiles for user {current_user.id}: {e}")
-        return fail_response(
-            status_code=getattr(
-                e, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR
-            ),
-            message=getattr(e, "detail", "Failed to retrieve child profiles"),
-            context={"error": str(e)},
-        )
-
-
-"""
-Route for getting a single child profile.
-"""
-
-from uuid import UUID
-from fastapi import APIRouter, Depends, status, HTTPException
-from sqlalchemy.orm import Session
-
-from api.db.database import get_db
-from api.utils.deps import get_current_user
-from api.v1.models.user.user import User
-from api.v1.services.child_profile_service import ChildProfileService
-from api.utils.responses import success_response, fail_response
-from api.utils.logger import logger
-
-
-router = APIRouter(prefix="/child-profiles", tags=["Child Profiles"])
+        logger.error("Error listing child profiles for user %s: %s", current_user.id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve child profiles",
+        ) from e
 
 
 @router.get("/{child_id}", status_code=status.HTTP_200_OK)
@@ -272,7 +196,7 @@ def get_child_profile(
 
     Only returns the child profile if it belongs to the current user.
     """
-    logger.info(f"Getting child profile {child_id} for user {current_user.id}")
+    logger.info("Getting child profile %s for user %s", child_id, current_user.id)
 
     try:
         child = ChildProfileService.get_child_profile(
@@ -293,34 +217,11 @@ def get_child_profile(
         )
 
     except Exception as e:
-        logger.error(f"Error getting child profile {child_id}: {e}")
-        return fail_response(
-            status_code=getattr(
-                e, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR
-            ),
-            message=getattr(e, "detail", "Failed to retrieve child profile"),
-            context={"error": str(e)},
-        )
-
-
-"""
-Route for deleting a child profile.
-"""
-
-from uuid import UUID
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
-
-from api.db.database import get_db
-from api.utils.deps import get_current_user
-from api.v1.models.user.user import User
-from api.v1.services.child_profile_service import ChildProfileService
-from api.v1.services.child_profile_image_upload import delete_child_profile_image
-from api.utils.responses import success_response, fail_response
-from api.utils.logger import logger
-
-
-router = APIRouter(prefix="/child-profiles", tags=["Child Profiles"])
+        logger.error("Error getting child profile %s: %s", child_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve child profile",
+        ) from e
 
 
 @router.delete("/{child_id}", status_code=status.HTTP_200_OK)
@@ -334,7 +235,7 @@ def delete_child_profile(
 
     This is a hard delete operation that also removes the profile picture from storage.
     """
-    logger.info(f"Deleting child profile {child_id} for user {current_user.id}")
+    logger.info("Deleting child profile %s for user %s", child_id, current_user.id)
 
     try:
         # Get child profile first to get image URL
@@ -352,38 +253,32 @@ def delete_child_profile(
         # Delete profile picture if exists
         if child.get("profile_picture_url"):
             delete_child_profile_image(child["profile_picture_url"])
-            logger.info(f"Deleted profile picture for child {child_id}")
+            logger.info("Deleted profile picture for child %s", child_id)
 
         # Delete child profile from database
         success = ChildProfileService.delete_child_profile(
             db=db, child_id=child_id, user_id=current_user.id
         )
 
-        if success:
-            return success_response(
-                status_code=status.HTTP_200_OK,
-                message="Child profile deleted successfully",
-                data={"deleted": True, "child_id": str(child_id)},
-            )
-        else:
+        if not success:
             return fail_response(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message="Failed to delete child profile",
                 context={"child_id": str(child_id)},
             )
 
-    except Exception as e:
-        logger.error(f"Error deleting child profile {child_id}: {e}")
-        return fail_response(
-            status_code=getattr(
-                e, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR
-            ),
-            message=getattr(e, "detail", "Failed to delete child profile"),
-            context={"error": str(e)},
+        return success_response(
+            status_code=status.HTTP_200_OK,
+            message="Child profile deleted successfully",
+            data={"deleted": True, "child_id": str(child_id)},
         )
 
-
-router = APIRouter(prefix="/child-profiles", tags=["Child Profiles"])
+    except Exception as e:
+        logger.error("Error deleting child profile %s: %s", child_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete child profile",
+        ) from e
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -397,7 +292,7 @@ def create_child_profile(
 
     The child profile will be linked to the user's profile setup.
     """
-    logger.info(f"Creating child profile for user {current_user.id}")
+    logger.info("Creating child profile for user %s", current_user.id)
 
     try:
         child = ChildProfileService.create_child_profile(
@@ -411,11 +306,8 @@ def create_child_profile(
         )
 
     except Exception as e:
-        logger.error(f"Error creating child profile: {e}")
-        return fail_response(
-            status_code=getattr(
-                e, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR
-            ),
-            message=getattr(e, "detail", "Failed to create child profile"),
-            context={"error": str(e)},
-        )
+        logger.error("Error creating child profile: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create child profile",
+        ) from e
