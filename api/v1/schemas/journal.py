@@ -63,3 +63,9 @@ class JournalResponse(BaseModel):
     status: str
     message: str
     data: JournalData
+
+class GetAllJournalsQuery(BaseModel):
+    limit: int = Field(10, ge=1, le=100, description="Number of entries to return")
+    offset: int = Field(0, ge=0, description="Number of entries to skip")
+    sort_by: str = Field("entry_date", description="Field to sort by (entry_date or created_at)")
+    order: str = Field("desc", description="Sort order (asc or desc)")
