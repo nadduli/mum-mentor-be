@@ -2,6 +2,7 @@ from typing import Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from api.utils.logger import logger
 from api.v1.models.community.posts import Post
@@ -51,7 +52,7 @@ class CommunityPostService:
         """
         try:
             # Fetch the post
-            post = self.db.query(Post).filter(Post.id == post_id).first()
+            post = self.db.query(Post).filter(Post.id == post_id).with_for_update().first()
             if not post:
                 return False, (404, "Post not found")
 
@@ -64,7 +65,7 @@ class CommunityPostService:
             self.db.commit()
             logger.info("Community post deleted | post_id=%s | user_id=%s", post_id, user_id)
             return True, None
-        except Exception as exc:
+        except SQLAlchemyError as exc:
             self.db.rollback()
             logger.error(
                 "Error deleting community post | post_id=%s | user_id=%s | error=%s",
