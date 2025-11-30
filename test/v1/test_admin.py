@@ -1,7 +1,7 @@
 import pytest
+
 from fastapi import status
 from fastapi.testclient import TestClient
-from unittest.mock import patch
 from api.v1.models.user.user import User
 from api.utils.security import hash_password
 

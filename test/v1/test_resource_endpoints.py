@@ -1,13 +1,15 @@
+import uuid
 import pytest
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+
 from main import app
 from api.db.database import get_db, Base
 from api.utils.deps import get_current_user
 from api.v1.models.user.user import User
-import uuid
 
 # ==========================================
 # 1. TEST DATABASE SETUP

@@ -1,8 +1,6 @@
 import uuid
 from datetime import datetime
 
-import pytest
-
 
 def create_photo(db, image_url: str):
     from api.v1.models.photos import Photos

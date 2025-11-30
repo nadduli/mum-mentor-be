@@ -1,7 +1,8 @@
 import uuid
 import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
+
+from fastapi.testclient import TestClient
 from fastapi import HTTPException
 
 from main import app

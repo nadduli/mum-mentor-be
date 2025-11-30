@@ -3,13 +3,14 @@ User Settings API Tests
 Tests for 200 (Success), 400 (Invalid Input), and 500 (Server Error) cases
 """
 
+import uuid
 import pytest
+from datetime import time
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-import uuid
-from datetime import datetime, time
 
 from main import app
 from api.db.database import get_db

@@ -1,9 +1,10 @@
 import pytest
 from fastapi import status
+from fastapi import HTTPException
+
 from api.v1.schemas.reset_password import ResetPassword
 from api.v1.services.reset_password import reset_password_service
 from api.utils.security import verify_password
-from fastapi import HTTPException
 
 
 # Successful Response Tests (2xx)

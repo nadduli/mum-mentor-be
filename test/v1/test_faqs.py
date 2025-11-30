@@ -1,7 +1,8 @@
 import pytest
+from unittest.mock import Mock, patch
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
 
 from api.v1.routes.faq import router as faq_router
 from api.v1.services.faq import FAQService

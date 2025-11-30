@@ -3,13 +3,14 @@ Edit Task API Tests
 Tests for PATCH /tasks/{task_id} endpoint
 """
 
+import uuid
 import pytest
+from datetime import datetime, timezone
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-import uuid
-from datetime import datetime, timezone, timedelta
 
 from main import app
 from api.db.database import get_db

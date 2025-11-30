@@ -1,9 +1,10 @@
 import pytest
+import uuid
+from datetime import datetime
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import uuid
-from datetime import datetime
 
 from main import app
 from api.db.base_model import Base

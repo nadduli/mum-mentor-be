@@ -3,13 +3,14 @@ JWT Token Validation API Tests
 Tests for GET /auth/validate-token endpoint
 """
 
+import uuid
+from datetime import datetime, timezone
 import pytest
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-import uuid
-from datetime import datetime, timezone
 
 from main import app
 from api.db.database import get_db

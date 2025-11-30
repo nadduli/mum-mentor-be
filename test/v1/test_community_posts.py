@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime, timezone
-
 import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
+
+from fastapi.testclient import TestClient
 
 from main import app
 from api.v1.models.user.user import User

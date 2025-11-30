@@ -1,10 +1,11 @@
+import pytest
 import uuid
+from unittest.mock import MagicMock
 from datetime import datetime, timezone, timedelta
 
-import pytest
 from fastapi.testclient import TestClient
+
 from main import app
-from unittest.mock import MagicMock
 from api.v1.models.user.user import User, UserAuthSession
 from api.db.database import get_db
 from api.utils.auth_utils import generate_refresh_token

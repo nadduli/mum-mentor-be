@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, AsyncMock
+
 from fastapi import status
 
 from api.v1.models.user.user import User, EmailVerificationToken

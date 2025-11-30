@@ -1,11 +1,11 @@
-from datetime import datetime, timezone, timedelta, date
-
+import uuid
 import pytest
+from datetime import date
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-import uuid
 
 from main import app
 from api.db.database import get_db

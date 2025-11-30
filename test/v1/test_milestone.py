@@ -1,9 +1,10 @@
 import pytest
+import uuid
+from datetime import date
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, String
 from sqlalchemy.orm import sessionmaker, Mapped, mapped_column, relationship
-import uuid
-from datetime import date
 
 from main import app
 from api.db.base_model import Base, BaseModel

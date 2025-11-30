@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime, timedelta, timezone
+
 from fastapi import HTTPException, status
 
 from api.v1.schemas.verify_otp import VerifyOTPRequest
