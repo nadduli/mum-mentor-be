@@ -3,6 +3,7 @@ This module contains the API endpoints for managing journal entries.
 """
 
 import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 

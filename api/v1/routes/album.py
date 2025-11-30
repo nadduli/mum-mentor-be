@@ -21,10 +21,10 @@ from api.v1.services.album_service import (
     delete_album as delete_album_service,
 )
 
-album_router = APIRouter()
+router = APIRouter(prefix="/album", tags=["Albums"])
 
 
-@album_router.get("/{album_id}", response_model=AlbumWithMemoriesResponse)
+@router.get("/{album_id}", response_model=AlbumWithMemoriesResponse)
 def get_album_with_memories(
     album_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -73,7 +73,7 @@ def get_album_with_memories(
         ) from e
 
 
-@album_router.get("/", response_model=List[AlbumListItem])
+@router.get("/", response_model=List[AlbumListItem])
 def list_albums(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -100,7 +100,7 @@ def list_albums(
         ) from e
 
 
-@album_router.delete("/{album_id}", status_code=status.HTTP_200_OK)
+@router.delete("/{album_id}", status_code=status.HTTP_200_OK)
 def delete_album(
     album_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -117,7 +117,7 @@ def delete_album(
     return success_response(status_code=200, message="Album deleted successfully")
 
 
-@album_router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 def create_album(
     payload: AlbumCreate,
     db: Session = Depends(get_db),

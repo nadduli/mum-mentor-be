@@ -5,7 +5,7 @@ This file aggregates all AI chat-related routes and includes them in the main AI
 
 from fastapi import APIRouter
 
-from .chat import ai_chat_router 
+from .chat import router as ai_chat_router
 from .websocket import router as websocket_router
 
 
