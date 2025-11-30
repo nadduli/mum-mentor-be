@@ -21,7 +21,7 @@ router = APIRouter(prefix="/images", tags=["Images"])
 
 @router.post("/upload", response_model=PhotoResponse, status_code=201)
 async def upload_photo(
-    request: Request, file: UploadFile, db: Session = Depends(get_db)
+    request: Request, file: UploadFile, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Upload a photo, compress if needed, store in uploads folder and url in database,
