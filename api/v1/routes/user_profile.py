@@ -15,7 +15,8 @@ from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
-
+old_profile_router1 = APIRouter(tags=["Profile"])
+old_profile_router2 = APIRouter(tags=["Authentication"])
 
 @router.get("/", status_code=status.HTTP_200_OK)
 def get_user_profile(
@@ -76,6 +77,16 @@ def get_user_profile(
     )
 
 
+@old_profile_router2.get("/auth/profile", status_code=status.HTTP_200_OK)
+def get_user_profile_alias(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    """
+    Alias for retrieving the authenticated user's profile information via /auth/profile.
+    """
+    return get_user_profile(db, current_user)
+
+
 @router.get("/setup", status_code=status.HTTP_200_OK)
 def get_profile_setup(
     session: Session = Depends(get_db),
@@ -97,6 +108,17 @@ def get_profile_setup(
         message="Profile setup retrieved successfully",
         data=profile,
     )
+
+
+@old_profile_router1.get("/profile-setup", status_code=status.HTTP_200_OK)
+def get_profile_setup_alias(
+    session: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Alias for getting the current user's profile setup details via /profile-setup.
+    """
+    return get_profile_setup(session, current_user)
 
 
 @router.post("/setup", status_code=status.HTTP_201_CREATED)
@@ -158,6 +180,18 @@ def create_profile_setup(
         )
 
 
+@old_profile_router1.post("/profile-setup", status_code=status.HTTP_201_CREATED)
+def create_profile_setup_alias(
+    payload: ProfileSetupSubmit,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Alias for creating a new profile setup for the authenticated user via /profile-setup.
+    """
+    return create_profile_setup(payload, db, current_user)
+
+
 @router.patch(
     "/setup", status_code=status.HTTP_200_OK, response_model=ProfileSetupResponse
 )
@@ -184,10 +218,23 @@ def update_profile_setup(
         return fail_response(
             status_code=e.status_code, message=e.detail, context={"detail": e.detail}
         )
-
     except Exception as e:
         return fail_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to update profile",
             context={"detail": str(e)},
         )
+
+
+@old_profile_router1.patch(
+    "/profile-setup", status_code=status.HTTP_200_OK, response_model=ProfileSetupResponse
+)
+def update_profile_setup_alias(
+    payload: ProfileSetupUpdate,
+    session: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Alias for partially updating the user's profile setup via /profile-setup.
+    """
+    return update_profile_setup(payload, session, current_user)
