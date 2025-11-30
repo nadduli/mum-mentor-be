@@ -2,6 +2,7 @@ from typing import Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from api.utils.logger import logger
 from api.v1.models.community.posts import Post
