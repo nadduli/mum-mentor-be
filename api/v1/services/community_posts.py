@@ -51,7 +51,7 @@ class CommunityPostService:
         """
         try:
             # Fetch the post
-            post = self.db.query(Post).filter(Post.id == post_id).first()
+            post = self.db.query(Post).filter(Post.id == post_id).with_for_update().first()
             if not post:
                 return False, (404, "Post not found")
 
