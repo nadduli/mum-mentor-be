@@ -112,7 +112,7 @@ async def download_photo(photo_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/delete", status_code=204)
-async def delete_all_photos(db: Session = Depends(get_db)):
+async def delete_all_photos(db: Session = Depends(get_db), current_user: User = Depends(get_admin_user)):
     """
     Delete all photos from the database and storage.
     """
