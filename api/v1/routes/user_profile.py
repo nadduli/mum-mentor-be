@@ -152,6 +152,8 @@ def create_profile_setup(
         logger.info(f"Profile setup already exists for user {current_user.id}")
 
         return fail_response(
+            status_code=status.HTTP_409_CONFLICT,
+            message=str(e),
             context={"detail": str(e)},
         )
 
@@ -216,7 +218,6 @@ def update_profile_setup(
         return fail_response(
             status_code=e.status_code, message=e.detail, context={"detail": e.detail}
         )
-
     except Exception as e:
         return fail_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
