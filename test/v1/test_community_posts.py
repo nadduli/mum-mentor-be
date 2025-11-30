@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 import pytest
 from unittest.mock import MagicMock, ANY
+from sqlalchemy.exc import SQLAlchemyError
 
 from fastapi.testclient import TestClient
 
@@ -167,7 +168,10 @@ def test_service_delete_post_success(mock_db_session):
     post = Post(id=post_id, user_id=user_id)
 
     # Mock DB query result
-    mock_db_session.query.return_value.filter.return_value.first.return_value = post
+    # Mock DB query result
+    mock_query = mock_db_session.query.return_value.filter.return_value
+    mock_query.with_for_update.return_value = mock_query
+    mock_query.first.return_value = post
 
     # Execute
     service = CommunityPostService(mock_db_session)
@@ -186,7 +190,9 @@ def test_service_delete_post_not_found(mock_db_session):
     post_id = uuid.uuid4()
 
     # Mock DB query result (None)
-    mock_db_session.query.return_value.filter.return_value.first.return_value = None
+    mock_query = mock_db_session.query.return_value.filter.return_value
+    mock_query.with_for_update.return_value = mock_query
+    mock_query.first.return_value = None
 
     # Execute
     service = CommunityPostService(mock_db_session)
@@ -207,7 +213,10 @@ def test_service_delete_post_forbidden(mock_db_session):
     post = Post(id=post_id, user_id=other_user_id)  # Owned by someone else
 
     # Mock DB query result
-    mock_db_session.query.return_value.filter.return_value.first.return_value = post
+    # Mock DB query result
+    mock_query = mock_db_session.query.return_value.filter.return_value
+    mock_query.with_for_update.return_value = mock_query
+    mock_query.first.return_value = post
 
     # Execute
     service = CommunityPostService(mock_db_session)
@@ -227,10 +236,13 @@ def test_service_delete_post_db_error(mock_db_session):
     post = Post(id=post_id, user_id=user_id)
 
     # Mock DB query result
-    mock_db_session.query.return_value.filter.return_value.first.return_value = post
+    # Mock DB query result
+    mock_query = mock_db_session.query.return_value.filter.return_value
+    mock_query.with_for_update.return_value = mock_query
+    mock_query.first.return_value = post
     
     # Mock commit to raise exception
-    mock_db_session.commit.side_effect = Exception("DB Error")
+    mock_db_session.commit.side_effect = SQLAlchemyError("DB Error")
 
     # Execute
     service = CommunityPostService(mock_db_session)
