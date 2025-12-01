@@ -41,7 +41,7 @@ def create_post(
     )
 
 
-@router.get("/", status_code=status.HTTP_200_OK, summary="List community posts (feed)")
+@router.get("/", status_code=status.HTTP_200_OK, summary="List community posts (public feed)")
 def list_posts(
     page: int = 1,
     per_page: int = 20,
