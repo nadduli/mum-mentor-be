@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import and_, or_
 import json
 from fastapi import UploadFile, Request
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, subqueryload
 from sqlalchemy import desc, asc
 from api.v1.models.community.post_likes import PostLike
 from api.v1.models.community.post_comments import PostComment 
