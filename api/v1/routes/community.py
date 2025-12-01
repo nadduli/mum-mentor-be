@@ -3,6 +3,7 @@ This module contains the API endpoints for managing community posts.
 """
 from typing import Optional, List
 from uuid import UUID
+from typing import List
 
 from fastapi import (
     APIRouter, Depends, status, Form, File, UploadFile, Request, Query
@@ -30,6 +31,94 @@ from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
 
 router = APIRouter(prefix="/community/posts", tags=["Community"])
+
+
+@router.get(
+    "/list",
+    status_code=status.HTTP_200_OK,
+    summary="List community posts (cursor-based pagination)"
+)
+def list_posts(
+    page: int = Query(1, ge=1, description="Page number (used when cursor is not provided)"),
+    per_page: int = Query(20, ge=1, le=100, description="Number of posts per page"),
+    cursor: Optional[str] = Query(None, description="Keyset cursor in format '<ISO datetime>|<uuid>'. If set, uses keyset pagination and ignores page."),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Return paginated community posts ordered by newest first.
+    
+    Supports two pagination modes:
+    1. Keyset pagination: Provide `cursor` parameter
+    2. Offset pagination: Use `page` and `per_page` parameters
+    
+    **Requires Authentication.**
+    """
+    service = CommunityPostService(db)
+    result, error = service.list_posts(page=page, per_page=per_page, cursor=cursor)
+
+    if error:
+        status_code, message = error
+        logger.warning(
+            "List posts failed | page=%s | per_page=%s | status=%s | message=%s",
+            page,
+            per_page,
+            status_code,
+            message,
+        )
+        return fail_response(status_code=status_code, message=message)
+
+    items = result.get("items", [])
+    total = result.get("total", 0)
+    next_cursor = result.get("next_cursor")
+
+    # Format posts with photos
+    posts_data = []
+    for post in items:
+        # Get photos for this post
+        photos = []
+        if hasattr(post, 'photos') and post.photos:
+            photos = [
+                {
+                    "id": photo.id,
+                    "post_id": photo.post_id,
+                    "url": photo.url
+                } for photo in post.photos
+            ]
+        
+        posts_data.append({
+            "id": post.id,
+            "user_id": post.user_id,
+            "title": post.title,
+            "content": post.content,
+            "views": post.views,
+            "created_at": post.created_at,
+            "photos": photos,
+            "likes_count": len(post.likes) if hasattr(post, 'likes') else 0,
+            "comments_count": len(post.comments) if hasattr(post, 'comments') else 0
+        })
+
+    # Calculate total pages for offset pagination
+    total_pages = 0
+    if not cursor and per_page > 0:
+        total_pages = (total + per_page - 1) // per_page
+
+    data = {
+        "posts": posts_data,
+        "pagination": {
+            "page": page if not cursor else None,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages if not cursor else None,
+            "next_cursor": next_cursor,
+        },
+    }
+
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="Posts fetched successfully",
+        data=data
+    )
 
 
 @router.get(
