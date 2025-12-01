@@ -111,7 +111,7 @@ class CommunityPostService:
                 per_page = 20
 
             # Base query ordered newest-first
-            query = self.db.query(Post).order_by(Post.created_at.desc(), Post.id.desc())
+            query = self.db.query(Post).options(subqueryload(Post.photos)).order_by(Post.created_at.desc(), Post.id.desc())
 
             # Keyset pagination: expect cursor as "<iso_datetime>|<uuid>" to handle ties
             next_cursor: Optional[str] = None
