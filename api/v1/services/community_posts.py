@@ -4,8 +4,9 @@ from datetime import datetime
 from sqlalchemy import and_, or_
 import json
 from fastapi import UploadFile, Request
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, subqueryload, joinedload
 from sqlalchemy import desc, asc
+from sqlalchemy import func, select
 from api.v1.models.community.post_likes import PostLike
 from api.v1.models.community.post_comments import PostComment 
 from sqlalchemy.exc import SQLAlchemyError
@@ -22,8 +23,8 @@ class CommunityPostService:
         self.db = db
 
     def create_post(
-        self, *, user_id: UUID, payload: PostCreateRequest
-    ) -> Tuple[Optional[Post], Optional[Tuple[int, str]]]:
+    self, *, user_id: UUID, payload: PostCreateRequest
+) -> Tuple[Optional[Post], Optional[Tuple[int, str]]]:
         """Create post with existing photo IDs (JSON)"""
         try:
             # Validate photo IDs if provided
@@ -32,38 +33,36 @@ class CommunityPostService:
                 if not is_valid:
                     return None, (400, error_message)
             
-            # Create the post using BaseModel methods
+            # Create the post
             post = Post(
                 user_id=user_id, 
                 title=payload.title, 
                 content=payload.content
             )
             
-            # Insert the post
             post.insert(self.db, commit=False)
             
             # Add photos if provided
             if payload.photo_ids:
                 for photo_id in payload.photo_ids:
-                    # Get the photo from database
                     photo = Photos.fetch_one(self.db, id=photo_id)
                     if not photo:
                         self.db.rollback()
                         return None, (404, f"Photo with ID {photo_id} not found")
                     
-                    # Create a PostPhoto record
                     post_photo = PostPhoto(
                         post_id=post.id,
                         url=photo.image_url
                     )
                     post_photo.add(self.db)
             
-            # Commit all changes
             self.db.commit()
             
-            # Refresh the post to load relationships
             try:
                 self.db.refresh(post)
+                # Set initial counts for new post
+                post.likes_count = 0
+                post.comments_count = 0
             except Exception as exc_refresh:
                 logger.warning(
                     "Failed to refresh post after creation | post_id=%s | user_id=%s | error=%s",
@@ -129,32 +128,55 @@ class CommunityPostService:
         per_page: int = 20,
         cursor: Optional[str] = None,
     ) -> Tuple[Optional[dict], Optional[Tuple[int, str]]]:
-        """Return paginated posts ordered by newest first.
-
-        Supports two modes:
-        - Keyset pagination when `cursor` (ISO datetime string) is provided: returns posts with created_at < cursor.
-        - Offset pagination when `cursor` is None: uses page/per_page with OFFSET.
-
-        Always returns a dict with `items` (list of Post), `total` (int|None) and `next_cursor` (str|None).
-        """
+        """Return paginated posts ordered by newest first with likes and comments counts."""
         try:
             if page < 1:
                 page = 1
             if per_page < 1:
                 per_page = 20
 
-            # Base query ordered newest-first
-            query = self.db.query(Post).order_by(Post.created_at.desc(), Post.id.desc())
+            # Create subqueries for counts
+            likes_subquery = (
+                select(
+                    PostLike.post_id,
+                    func.count(PostLike.id).label("likes_count")
+                )
+                .group_by(PostLike.post_id)
+                .subquery()
+            )
+            
+            comments_subquery = (
+                select(
+                    PostComment.post_id,
+                    func.count(PostComment.id).label("comments_count")
+                )
+                .group_by(PostComment.post_id)
+                .subquery()
+            )
 
-            # Keyset pagination: expect cursor as "<iso_datetime>|<uuid>" to handle ties
+            # Base query with joins for counts
+            query = (
+                self.db.query(
+                    Post,
+                    func.coalesce(likes_subquery.c.likes_count, 0).label("likes_count"),
+                    func.coalesce(comments_subquery.c.comments_count, 0).label("comments_count")
+                )
+                .outerjoin(likes_subquery, Post.id == likes_subquery.c.post_id)
+                .outerjoin(comments_subquery, Post.id == comments_subquery.c.post_id)
+                .options(
+                    joinedload(Post.user),
+                    subqueryload(Post.photos)
+                )
+                .order_by(Post.created_at.desc(), Post.id.desc())
+            )
+
+            # Keyset pagination
             next_cursor: Optional[str] = None
             items: List[Post] = []
 
             if cursor:
-                # parse cursor into (created_at, id)
                 try:
                     created_at_str, id_str = cursor.split("|", 1)
-                    # support trailing Z (UTC) by replacing Z with +00:00
                     if created_at_str.endswith("Z"):
                         created_at_str = created_at_str[:-1] + "+00:00"
                     cursor_dt = datetime.fromisoformat(created_at_str)
@@ -163,9 +185,7 @@ class CommunityPostService:
                     logger.exception("Invalid cursor provided: %s", cursor)
                     return None, (400, "Invalid cursor format; expected '<ISO datetime>|<uuid>'")
 
-                # Filter to records strictly older than the cursor (created_at < cursor_dt)
-                # or same timestamp but id < cursor_id (because we order by id desc)
-                items = (
+                results = (
                     query.filter(
                         or_(
                             Post.created_at < cursor_dt,
@@ -175,20 +195,24 @@ class CommunityPostService:
                     .limit(per_page)
                     .all()
                 )
-
-                # For keyset pagination we avoid an expensive full COUNT; set total to None
                 total = None
-
             else:
-                # Offset pagination fallback (keeps total count for compatibility)
-                items = query.offset((page - 1) * per_page).limit(per_page).all()
+                results = query.offset((page - 1) * per_page).limit(per_page).all()
                 try:
                     total = self.db.query(Post).count()
                 except Exception:
                     logger.exception("Failed to compute total count for posts")
                     total = None
 
-            # Compute next cursor for keyset clients (use last item's created_at and id)
+            # Extract posts and attach counts as attributes
+            items = []
+            for result in results:
+                post = result[0]
+                post.likes_count = result[1]
+                post.comments_count = result[2]
+                items.append(post)
+
+            # Compute next cursor
             if items:
                 last = items[-1]
                 try:
@@ -410,83 +434,3 @@ class CommunityPostService:
                 exc
             )
             return False, (500, "Failed to remove photo from post")
-
-    def get_all_posts(
-        self,
-        page: int = 1,
-        limit: int = 20,
-        sort_by: str = "created_at",
-        order: str = "desc"
-    ) -> Dict[str, Any]:
-        """
-        Get all posts with pagination and sorting
-        """
-        try:
-            # Calculate offset
-            offset = (page - 1) * limit
-            
-            # Simple query without joinedload
-            query = self.db.query(Post)
-            
-            # Apply sorting
-            if hasattr(Post, sort_by):
-                if order.lower() == "asc":
-                    query = query.order_by(asc(getattr(Post, sort_by)))
-                else:
-                    query = query.order_by(desc(getattr(Post, sort_by)))
-            else:
-                query = query.order_by(desc(Post.created_at))
-            
-            # Get total count
-            total = query.count()
-            
-            # Apply pagination
-            posts = query.offset(offset).limit(limit).all()
-            
-            # Format response
-            posts_data = []
-            for post in posts:
-                # Get photos
-                photos = PostPhoto.fetch_all(self.db, post_id=post.id)
-                
-                # Get counts
-                likes_count = PostLike.fetch_all(self.db, post_id=post.id)
-                comments_count = PostComment.fetch_all(self.db, post_id=post.id)
-                
-                # Format photos with post_id
-                photos_response = []
-                for photo in photos:
-                    photos_response.append({
-                        "id": photo.id,
-                        "post_id": photo.post_id,
-                        "url": photo.url
-                    })
-                
-                posts_data.append({
-                    "id": post.id,
-                    "user_id": post.user_id,
-                    "title": post.title,
-                    "content": post.content,
-                    "views": post.views,
-                    "created_at": post.created_at,
-                    "photos": photos_response,
-                    "likes_count": len(likes_count),
-                    "comments_count": len(comments_count)
-                })
-            
-            return {
-                "posts": posts_data,
-                "pagination": {
-                    "page": page,
-                    "limit": limit,
-                    "total": total,
-                    "pages": (total + limit - 1) // limit
-                }
-            }
-            
-        except Exception as exc:
-            logger.error(
-                "Error fetching all posts | error=%s",
-                exc
-            )
-            raise

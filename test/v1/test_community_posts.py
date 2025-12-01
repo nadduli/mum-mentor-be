@@ -119,7 +119,7 @@ def test_list_posts_public_feed_success(mock_db_session, monkeypatch):
 
     monkeypatch.setattr(
         "api.v1.services.community_posts.CommunityPostService.list_posts",
-        lambda self, page, per_page: ({"items": [post2, post1], "total": 2}, None),
+        lambda self, page, per_page, cursor: ({"items": [post2, post1], "total": 2}, None),
     )
 
     response = client.get("/api/v1/community/posts/?page=1&per_page=10")

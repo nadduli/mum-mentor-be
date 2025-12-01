@@ -1,26 +1,31 @@
 """
 This module contains the API endpoints for managing community posts.
 """
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
-from typing import List
 
-from fastapi import APIRouter, Depends, status, Form, File, UploadFile, Request, Query, HTTPException
+from fastapi import (
+    APIRouter, Depends, status, Form, File, UploadFile, Request, Query
+)
 from sqlalchemy.orm import Session
 
 from api.db.database import get_db
 from api.utils.deps import get_current_user
 from api.v1.models.user.user import User
 from api.v1.services.community import CommunityService
-from api.v1.schemas.community_posts import CommentCreateRequest 
-from api.v1.schemas.community import (
+from api.v1.schemas.community_posts import (
+    CommentCreateRequest,
+    PostCreateRequest,
     PostResponse,
+    PostPhotoResponse
+)
+from api.v1.schemas.community import (
+    PostResponse as CommunityPostResponse,
     PostResponseWrapper,
     PostPhotoDTO,
     LikeToggleResponse,
     LikeResponseWrapper,
 )
-from api.v1.schemas.community_posts import PostCreateRequest, PostPhotoResponse
 from api.v1.services.community_posts import CommunityPostService
 from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
@@ -67,31 +72,8 @@ def list_posts(
     total = result.get("total", 0)
     next_cursor = result.get("next_cursor")
 
-    # Format posts with photos
-    posts_data = []
-    for post in items:
-        # Get photos for this post
-        photos = []
-        if hasattr(post, 'photos') and post.photos:
-            photos = [
-                {
-                    "id": photo.id,
-                    "post_id": photo.post_id,
-                    "url": photo.url
-                } for photo in post.photos
-            ]
-        
-        posts_data.append({
-            "id": post.id,
-            "user_id": post.user_id,
-            "title": post.title,
-            "content": post.content,
-            "views": post.views,
-            "created_at": post.created_at,
-            "photos": photos,
-            "likes_count": len(post.likes) if hasattr(post, 'likes') else 0,
-            "comments_count": len(post.comments) if hasattr(post, 'comments') else 0
-        })
+    # Use PostResponse.model_validate which now includes user, likes_count, and comments_count
+    posts_data = [PostResponse.model_validate(item).model_dump() for item in items]
 
     # Calculate total pages for offset pagination
     total_pages = 0
@@ -100,7 +82,7 @@ def list_posts(
 
     data = {
         "posts": posts_data,
-        "pagination": {
+        "meta": {
             "page": page if not cursor else None,
             "per_page": per_page,
             "total": total,
@@ -124,6 +106,7 @@ def list_posts(
 def view_post(
     post_id: UUID,
     session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get a single post by ID.
@@ -132,7 +115,7 @@ def view_post(
     """
     post = CommunityService.get_post_by_id(session, post_id)
 
-    response_data = PostResponse(
+    response_data = CommunityPostResponse(
         id=post.id,
         title=post.title,
         content=post.content,
@@ -183,8 +166,8 @@ def toggle_post_like(
 
 
 @router.post(
-    "/", 
-    status_code=status.HTTP_201_CREATED, 
+    "/",
+    status_code=status.HTTP_201_CREATED,
     summary="Create a community post with existing photos"
 )
 def create_post_json(
@@ -194,14 +177,14 @@ def create_post_json(
 ):
     """
     Create a new community post using existing photo IDs.
-    
+
     JSON Request:
     {
         "title": "My Post",
         "content": "Content here",
         "photo_ids": ["uuid1", "uuid2"]  # Optional - existing photo IDs
     }
-    
+
     **Requires Authentication.**
     """
     service = CommunityPostService(db)
@@ -217,31 +200,13 @@ def create_post_json(
         )
         return fail_response(status_code=status_code, message=message)
 
-    # Convert photos to response format
-    photos_response = []
-    if post.photos:
-        photos_response = [
-            PostPhotoResponse(
-                id=photo.id,
-                post_id=photo.post_id,
-                url=photo.url
-            ) for photo in post.photos
-        ]
-    
-    response_data = {
-        "id": post.id,
-        "user_id": post.user_id,
-        "title": post.title,
-        "content": post.content,
-        "created_at": post.created_at,
-        "views": post.views,
-        "photos": photos_response
-    }
+    # Use PostResponse which includes all fields
+    response = PostResponse.model_validate(post)
 
     return success_response(
         status_code=status.HTTP_201_CREATED,
         message="Post created successfully",
-        data=response_data,
+        data=response.model_dump(),
     )
 
 
@@ -260,16 +225,16 @@ async def create_post_with_upload(
 ):
     """
     Create a new community post and upload photos in one request.
-    
+
     Form Data:
     - title: string
     - content: string
     - files: list of image files
-    
+
     **Requires Authentication.**
     """
     service = CommunityPostService(db)
-    
+
     post, error = await service.create_post_with_files(
         user_id=current_user.id,
         title=title,
@@ -281,38 +246,20 @@ async def create_post_with_upload(
     if error:
         status_code, message = error
         logger.warning(
-            "Create post with upload failed | user_id=%s | status=%s | message=%s",
+            "Create post upload fail | user=%s | status=%s | message=%s",
             current_user.id,
             status_code,
             message,
         )
         return fail_response(status_code=status_code, message=message)
 
-    # Convert photos to response format
-    photos_response = []
-    if post.photos:
-        photos_response = [
-            PostPhotoResponse(
-                id=photo.id,
-                post_id=photo.post_id,
-                url=photo.url
-            ) for photo in post.photos
-        ]
-    
-    response_data = {
-        "id": post.id,
-        "user_id": post.user_id,
-        "title": post.title,
-        "content": post.content,
-        "created_at": post.created_at,
-        "views": post.views,
-        "photos": photos_response
-    }
+    # Use PostResponse which includes all fields
+    response = PostResponse.model_validate(post)
 
     return success_response(
         status_code=status.HTTP_201_CREATED,
         message="Post created successfully",
-        data=response_data,
+        data=response.model_dump(),
     )
 
 
@@ -325,6 +272,7 @@ def comment_on_post(
 ):
     """
     Adds a comment to a community post.
+    **Requires Authentication.**
     """
     comment = CommunityService.add_comment_to_post(
         session, post_id, current_user.id, payload.comment
