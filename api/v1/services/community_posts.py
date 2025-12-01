@@ -1,11 +1,13 @@
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy import and_, or_
 import json
 from fastapi import UploadFile, Request
-
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import desc, asc
+from api.v1.models.community.post_likes import PostLike
+from api.v1.models.community.post_comments import PostComment 
 
 from api.utils.logger import logger
 from api.v1.models.community.posts import Post
@@ -168,6 +170,7 @@ class CommunityPostService:
         except Exception as exc:
             logger.error("Error listing posts | page=%s | per_page=%s | error=%s", page, per_page, exc)
             return None, (500, "Failed to fetch posts")
+
     async def create_post_with_files(
         self,
         *,
@@ -374,3 +377,83 @@ class CommunityPostService:
                 exc
             )
             return False, (500, "Failed to remove photo from post")
+
+    def get_all_posts(
+        self,
+        page: int = 1,
+        limit: int = 20,
+        sort_by: str = "created_at",
+        order: str = "desc"
+    ) -> Dict[str, Any]:
+        """
+        Get all posts with pagination and sorting
+        """
+        try:
+            # Calculate offset
+            offset = (page - 1) * limit
+            
+            # Simple query without joinedload
+            query = self.db.query(Post)
+            
+            # Apply sorting
+            if hasattr(Post, sort_by):
+                if order.lower() == "asc":
+                    query = query.order_by(asc(getattr(Post, sort_by)))
+                else:
+                    query = query.order_by(desc(getattr(Post, sort_by)))
+            else:
+                query = query.order_by(desc(Post.created_at))
+            
+            # Get total count
+            total = query.count()
+            
+            # Apply pagination
+            posts = query.offset(offset).limit(limit).all()
+            
+            # Format response
+            posts_data = []
+            for post in posts:
+                # Get photos
+                photos = PostPhoto.fetch_all(self.db, post_id=post.id)
+                
+                # Get counts
+                likes_count = PostLike.fetch_all(self.db, post_id=post.id)
+                comments_count = PostComment.fetch_all(self.db, post_id=post.id)
+                
+                # Format photos with post_id
+                photos_response = []
+                for photo in photos:
+                    photos_response.append({
+                        "id": photo.id,
+                        "post_id": photo.post_id,
+                        "url": photo.url
+                    })
+                
+                posts_data.append({
+                    "id": post.id,
+                    "user_id": post.user_id,
+                    "title": post.title,
+                    "content": post.content,
+                    "views": post.views,
+                    "created_at": post.created_at,
+                    "photos": photos_response,
+                    "likes_count": len(likes_count),
+                    "comments_count": len(comments_count)
+                })
+            
+            return {
+                "posts": posts_data,
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": total,
+                    "pages": (total + limit - 1) // limit
+                }
+            }
+            
+        except Exception as exc:
+            logger.error(
+                "Error fetching all posts | error=%s",
+                exc
+            )
+            raise

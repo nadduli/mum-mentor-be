@@ -5,7 +5,7 @@ from typing import Optional
 from uuid import UUID
 from typing import List
 
-from fastapi import APIRouter, Depends, status, Form, File, UploadFile, Request
+from fastapi import APIRouter, Depends, status, Form, File, UploadFile, Request, Query
 from sqlalchemy.orm import Session
 
 from api.db.database import get_db
@@ -20,12 +20,63 @@ from api.v1.schemas.community import (
     LikeToggleResponse,
     LikeResponseWrapper,
 )
-from api.v1.schemas.community_posts import PostCreateRequest, PostPhotoResponse
+from api.v1.schemas.community_posts import PostCreateRequest, PostPhotoResponse, AllPostsResponse
 from api.v1.services.community_posts import CommunityPostService
 from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
 
 router = APIRouter(prefix="/community/posts", tags=["Community"])
+
+
+@router.get(
+    "/",
+    status_code=status.HTTP_200_OK,
+    response_model=AllPostsResponse,
+    summary="Get all community posts"
+)
+def get_all_posts(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    sort_by: str = Query("created_at", description="Field to sort by"),
+    order: str = Query("desc", description="Sort order (asc/desc)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get all community posts with pagination and sorting.
+    
+    Parameters:
+    - page: Page number (default: 1)
+    - limit: Items per page (default: 20, max: 100)
+    - sort_by: Field to sort by (default: created_at)
+    - order: Sort order - "asc" or "desc" (default: desc)
+    
+    **Requires Authentication.**
+    """
+    try:
+        service = CommunityPostService(db)
+        result = service.get_all_posts(
+            page=page,
+            limit=limit,
+            sort_by=sort_by,
+            order=order
+        )
+        
+        return AllPostsResponse(
+            posts=result["posts"],
+            pagination=result["pagination"]
+        )
+        
+    except Exception as exc:
+        logger.error(
+            "Error getting all posts | user_id=%s | error=%s",
+            current_user.id,
+            exc
+        )
+        return fail_response(
+            status_code=500,
+            message="Failed to fetch posts"
+        )
 
 
 @router.get(
@@ -195,7 +246,6 @@ async def create_post_with_upload(
         content=content,
         files=files,
         request=request
-        # Note: db is already passed to service constructor
     )
 
     if error:
