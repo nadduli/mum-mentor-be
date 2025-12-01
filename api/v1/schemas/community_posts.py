@@ -11,16 +11,26 @@ class PostCreateRequest(BaseModel):
     photo_ids: Optional[List[UUID]] = Field(default=None, description="List of uploaded photo IDs to attach to post")
 
 
+class PostUserResponse(BaseModel):
+    """user info for post responses"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    full_name: str
+
 class PostResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     user_id: UUID
+    user: PostUserResponse
     title: str
     content: str
     views: int
     created_at: datetime
     photos: List["PostPhotoResponse"] = []
+    likes_count: int = 0
+    comments_count: int = 0
 
 
 class PostPhotoResponse(BaseModel):

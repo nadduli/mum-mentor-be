@@ -84,16 +84,17 @@ async def delete_photo(photo_id: str, db: Session = Depends(get_db), current_use
 @router.get("/{photo_id}", response_model=PhotoResponse, status_code=200)
 async def get_photo(photo_id: str, db: Session = Depends(get_db)):
     """
-    Retrieve a photo by ID.
+    Retrieve a photo metadata by ID.
     """
     response = ImageService.get_photo_by_id(db, photo_id)
     return response
 
 
-@router.get("/download/{photo_id}.jpg", status_code=200)
-async def download_photo(photo_id: str, db: Session = Depends(get_db)):
+# This serves images for display in browser/app
+@router.get("/serve/{photo_id}.jpg", status_code=200)
+async def serve_photo(photo_id: str, db: Session = Depends(get_db)):
     """
-    Download a photo by ID.
+    Serve a photo file for inline display in browser or app.
     """
     # fetch photo record
     photo = db.query(Photos).filter(Photos.id == photo_id).first()
@@ -107,8 +108,14 @@ async def download_photo(photo_id: str, db: Session = Depends(get_db)):
     if not os.path.exists(file_path):
         return fail_response(message="File not found on server", status_code=404)
 
-    # return file for download
-    return FileResponse(path=file_path, filename=filename, media_type="image/jpeg")
+    # return file for INLINE display
+    return FileResponse(
+        path=file_path, 
+        media_type="image/jpeg",
+        headers={
+            "Content-Disposition": "inline"
+        }
+    )
 
 
 @router.delete("/delete", status_code=204)
