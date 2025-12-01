@@ -6,9 +6,9 @@ from api.utils.responses import validation_error_response
 from api.v1.routes import app as api_v1_router
 from api.middleware.correlation_middleware import CorrelationIdMiddleware
 from collections import defaultdict
+from api.utils.limiter import RateLimiter
 
 import logging
-
 
 from api.utils.exception_handlers import (request_validation_exception_handler, http_exception_handler)
 
@@ -24,10 +24,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/api/redoc"
 )
+app.add_middleware(RateLimiter, limit="200/minute")
 
-# Add Correlation ID middleware
 app.add_middleware(CorrelationIdMiddleware)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -35,6 +34,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
