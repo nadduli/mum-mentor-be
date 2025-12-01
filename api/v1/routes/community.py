@@ -20,7 +20,7 @@ from api.v1.schemas.community import (
     LikeToggleResponse,
     LikeResponseWrapper,
 )
-from api.v1.schemas.community_posts import PostCreateRequest, PostPhotoResponse, AllPostsResponse
+from api.v1.schemas.community_posts import PostCreateRequest, PostPhotoResponse
 from api.v1.services.community_posts import CommunityPostService
 from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
@@ -29,54 +29,91 @@ router = APIRouter(prefix="/community/posts", tags=["Community"])
 
 
 @router.get(
-    "/",
+    "/list",
     status_code=status.HTTP_200_OK,
-    response_model=AllPostsResponse,
-    summary="Get all community posts"
+    summary="List community posts (cursor-based pagination)"
 )
-def get_all_posts(
-    page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(20, ge=1, le=100, description="Items per page"),
-    sort_by: str = Query("created_at", description="Field to sort by"),
-    order: str = Query("desc", description="Sort order (asc/desc)"),
+def list_posts(
+    page: int = Query(1, ge=1, description="Page number (used when cursor is not provided)"),
+    per_page: int = Query(20, ge=1, le=100, description="Number of posts per page"),
+    cursor: Optional[str] = Query(None, description="Keyset cursor in format '<ISO datetime>|<uuid>'. If set, uses keyset pagination and ignores page."),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Get all community posts with pagination and sorting.
+    Return paginated community posts ordered by newest first.
     
-    Parameters:
-    - page: Page number (default: 1)
-    - limit: Items per page (default: 20, max: 100)
-    - sort_by: Field to sort by (default: created_at)
-    - order: Sort order - "asc" or "desc" (default: desc)
+    Supports two pagination modes:
+    1. Keyset pagination: Provide `cursor` parameter
+    2. Offset pagination: Use `page` and `per_page` parameters
     
     **Requires Authentication.**
     """
-    try:
-        service = CommunityPostService(db)
-        result = service.get_all_posts(
-            page=page,
-            limit=limit,
-            sort_by=sort_by,
-            order=order
+    service = CommunityPostService(db)
+    result, error = service.list_posts(page=page, per_page=per_page, cursor=cursor)
+
+    if error:
+        status_code, message = error
+        logger.warning(
+            "List posts failed | page=%s | per_page=%s | status=%s | message=%s",
+            page,
+            per_page,
+            status_code,
+            message,
         )
+        return fail_response(status_code=status_code, message=message)
+
+    items = result.get("items", [])
+    total = result.get("total", 0)
+    next_cursor = result.get("next_cursor")
+
+    # Format posts with photos
+    posts_data = []
+    for post in items:
+        # Get photos for this post
+        photos = []
+        if hasattr(post, 'photos') and post.photos:
+            photos = [
+                {
+                    "id": photo.id,
+                    "post_id": photo.post_id,
+                    "url": photo.url
+                } for photo in post.photos
+            ]
         
-        return AllPostsResponse(
-            posts=result["posts"],
-            pagination=result["pagination"]
-        )
-        
-    except Exception as exc:
-        logger.error(
-            "Error getting all posts | user_id=%s | error=%s",
-            current_user.id,
-            exc
-        )
-        return fail_response(
-            status_code=500,
-            message="Failed to fetch posts"
-        )
+        posts_data.append({
+            "id": post.id,
+            "user_id": post.user_id,
+            "title": post.title,
+            "content": post.content,
+            "views": post.views,
+            "created_at": post.created_at,
+            "photos": photos,
+            "likes_count": len(post.likes) if hasattr(post, 'likes') else 0,
+            "comments_count": len(post.comments) if hasattr(post, 'comments') else 0
+        })
+
+    # Calculate total pages for offset pagination
+    total_pages = 0
+    if not cursor and per_page > 0:
+        total_pages = (total + per_page - 1) // per_page
+
+    data = {
+        "posts": posts_data,
+        "pagination": {
+            "page": page if not cursor else None,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages if not cursor else None,
+            "next_cursor": next_cursor,
+        },
+    }
+
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="Posts fetched successfully",
+        data=data
+    )
 
 
 @router.get(
@@ -203,17 +240,6 @@ def create_post_json(
         data=response_data,
     )
 
-@router.get("/", status_code=status.HTTP_200_OK, summary="List community posts (public feed)")
-def list_posts(
-    page: int = Query(1, ge=1, description="Page number"),
-    per_page: int = Query(20, ge=1, le=100, description="Number of posts per page"),
-    cursor: Optional[str] = Query(None, description="Keyset cursor in format '<ISO datetime>|<uuid>'. If set, uses keyset pagination and ignores page."),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Return paginated community posts ordered by newest first (public feed)."""
-    service = CommunityPostService(db)
-    result, error = service.list_posts(page=page, per_page=per_page, cursor=cursor)
 
 @router.post(
     "/upload",
@@ -251,9 +277,6 @@ async def create_post_with_upload(
     if error:
         status_code, message = error
         logger.warning(
-            "List posts failed | page=%s | per_page=%s | status=%s | message=%s",
-            page,
-            per_page,
             "Create post with upload failed | user_id=%s | status=%s | message=%s",
             current_user.id,
             status_code,
@@ -261,30 +284,6 @@ async def create_post_with_upload(
         )
         return fail_response(status_code=status_code, message=message)
 
-    items = result.get("items", [])
-    total = result.get("total", 0)
-    next_cursor = result.get("next_cursor")
-
-    posts_data = [PostResponse.model_validate(item).model_dump() for item in items]
-
-    total_pages = 0
-    try:
-        total_pages = (total + per_page - 1) // per_page if per_page else 0
-    except Exception:
-        total_pages = 0
-
-    data = {
-        "posts": posts_data,
-        "meta": {
-            "page": page if not cursor else None,
-            "per_page": per_page,
-            "total": total,
-            "total_pages": total_pages if not cursor else None,
-            "next_cursor": next_cursor,
-        },
-    }
-
-    return success_response(status_code=status.HTTP_200_OK, message="Posts fetched successfully", data=data)
     # Convert photos to response format
     photos_response = []
     if post.photos:
