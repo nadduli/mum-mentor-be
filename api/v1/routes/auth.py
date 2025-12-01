@@ -45,6 +45,7 @@ from api.v1.services.google_auth import (
     GoogleVerificationResponse,
 )
 from api.v1.services.refresh_service import refresh_access_token_service
+from api.v1.services.refresh_service import _hash_token
 from api.v1.services.logout import Logout
 
 from api.utils.security import verify_password
@@ -219,7 +220,7 @@ def login_route(
 
         session = UserAuthSession(
             user_id=user.id,
-            refresh_token=refresh_token,
+            refresh_token=_hash_token(refresh_token),
             ip_address=ip_address,
             user_agent=user_agent,
             device_name=device_name,
@@ -510,8 +511,14 @@ The Nora Team"""
         500: {"description": "Internal server error"},
     },
 )
-def refresh_access_token(request: Request, db: Session = Depends(get_db)):
-    """Refresh an access token using a valid refresh token.
+def refresh_access_token(
+    payload: RefreshTokenRequest,
+    request: Request, 
+    db: Session = Depends(get_db)
+):
+    """
+    Refresh an access token using a valid refresh token.
+    
 
     Security measures implemented:
     - Validates the refresh token exists in the DB and is not revoked.
@@ -521,36 +528,34 @@ def refresh_access_token(request: Request, db: Session = Depends(get_db)):
     - Logs the refresh action in `user_activity_logs`.
     """
 
-    # Extract token from Authorization header
-    auth_header = request.headers.get("authorization") or request.headers.get(
-        "Authorization"
-    )
-    if not auth_header or not auth_header.startswith("Bearer "):
+    if not payload or not payload.refresh_token:
         return fail_response(
-            status.HTTP_401_UNAUTHORIZED, "Missing Authorization header"
+            status.HTTP_401_UNAUTHORIZED, 
+            "Missing refresh token in request body"
         )
 
-    incoming_token = auth_header.split(" ", 1)[1].strip()
-
+    incoming_token = payload.refresh_token.strip()
     device_header = request.headers.get("X-Device-Id")
     client_host = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
+
+    logger.info("Email/password refresh token request received")
 
     data, error = refresh_access_token_service(
         db, incoming_token, device_header, client_host, user_agent
     )
 
     if error:
-        # logger for errors
         logger.warning(
             "Refresh token error: %(message)s", {"message": error.get("message")}
         )
         return fail_response(
-            error.get("status_code", status.HTTP_401_UNAUTHORIZED), error.get("message")
+            error.get("status_code", status.HTTP_401_UNAUTHORIZED), 
+            error.get("message")
         )
 
-    # logger success
-    logger.info("Access token refreshed successfully.")
+    logger.info("Access token refreshed successfully for user: %s", data.get("user_id"))
+    
     return auth_response(
         status.HTTP_200_OK,
         "Access token refreshed successfully.",
@@ -627,61 +632,6 @@ async def google_login(
         ).model_dump(),
     )
 
-
-@auth_router.post(
-    "/refresh/", response_model=GoogleAuthResponse, status_code=status.HTTP_200_OK
-)
-async def refresh_token_route(
-    payload: RefreshTokenRequest, db: Session = Depends(get_db)
-):
-    """returns new access and refresh tokens given a valid refresh token
-    Args:
-        payload (RefreshRequest): takes in refresh token
-        db (Session, optional): Defaults to Depends(get_db).
-    """
-    payload_data = google_auth_service.verify_token(payload.refresh_token, refresh=True)
-    if isinstance(payload_data, JSONResponse):
-        logger.warning("Invalid refresh token attempt")
-        return payload_data
-    if not payload_data:
-        return fail_response(
-            status_code=status.HTTP_401_UNAUTHORIZED, message="Invalid refresh token"
-        )
-    sid = payload_data.get("sid")
-    user_id = payload_data.get("user_id")
-    session = (
-        db.query(UserAuthSession)
-        .filter(UserAuthSession.id == sid, UserAuthSession.is_revoked.is_(False))
-        .first()
-    )
-    logger.info("Session %s", session)
-    if not session or session.expires_at < datetime.now(timezone.utc):
-        return fail_response(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            message="Refresh token session is invalid or expired",
-        )
-    if not user_id:
-        return fail_response(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            message="Invalid refresh token payload",
-        )
-    user = google_auth_service.get_user_by_id(db, user_id)
-    if not user or isinstance(user, JSONResponse):
-        return fail_response(
-            status_code=status.HTTP_401_UNAUTHORIZED, message="User not found"
-        )
-    sid = str(session.id)
-    access_token = google_auth_service.issue_local_access_token(user=user, sid=sid)
-    refresh_token = google_auth_service.issue_local_refresh_token(user=user, sid=sid)
-    return success_response(
-        status_code=status.HTTP_200_OK,
-        message="Token refreshed successfully",
-        data=GoogleAuthResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_type="bearer",
-        ).model_dump(),
-    )
 
 
 @auth_router.get("/user", status_code=status.HTTP_200_OK)
