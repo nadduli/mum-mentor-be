@@ -53,7 +53,9 @@ def view_post(
     )
 
     return PostResponseWrapper(
-        status="success", message="Post retrieved successfully", data=response_data
+        status="success",
+        message="Post retrieved successfully",
+        data=response_data
     )
 
 
@@ -79,7 +81,9 @@ def toggle_post_like(
         session, post_id, user_uuid
     )
 
-    message = "Post liked successfully" if is_liked else "Post unliked successfully"
+    message = (
+        "Post liked successfully" if is_liked else "Post unliked successfully"
+    )
 
     return LikeResponseWrapper(
         status="success",
@@ -131,11 +135,13 @@ def delete_post(
 ):
     """Delete a community post if the current user is the owner.
 
-    Returns 204 on success, otherwise raises an HTTPException with the appropriate
-    status code and error message.
+    Returns 204 on success, otherwise raises an HTTPException with the
+    appropriate status code and error message.
     """
     service = CommunityPostService(db)
-    success, error = service.delete_post(post_id=post_id, user_id=current_user.id)
+    success, error = service.delete_post(
+        post_id=post_id, user_id=current_user.id
+    )
     if not success:
         status_code, message = error
         raise HTTPException(status_code=status_code, detail=message)
