@@ -1,9 +1,13 @@
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any
 from uuid import UUID
+from datetime import datetime
+from sqlalchemy import and_, or_
 import json
 from fastapi import UploadFile, Request
-
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, subqueryload
+from sqlalchemy import desc, asc
+from api.v1.models.community.post_likes import PostLike
+from api.v1.models.community.post_comments import PostComment 
 
 from api.utils.logger import logger
 from api.v1.models.community.posts import Post
@@ -84,6 +88,88 @@ class CommunityPostService:
             )
             self.db.rollback()
             return None, (500, "Failed to create post")
+
+    def list_posts(
+        self,
+        *,
+        page: int = 1,
+        per_page: int = 20,
+        cursor: Optional[str] = None,
+    ) -> Tuple[Optional[dict], Optional[Tuple[int, str]]]:
+        """Return paginated posts ordered by newest first.
+
+        Supports two modes:
+        - Keyset pagination when `cursor` (ISO datetime string) is provided: returns posts with created_at < cursor.
+        - Offset pagination when `cursor` is None: uses page/per_page with OFFSET.
+
+        Always returns a dict with `items` (list of Post), `total` (int|None) and `next_cursor` (str|None).
+        """
+        try:
+            if page < 1:
+                page = 1
+            if per_page < 1:
+                per_page = 20
+
+            # Base query ordered newest-first
+            query = self.db.query(Post).options(subqueryload(Post.photos)).order_by(Post.created_at.desc(), Post.id.desc())
+
+            # Keyset pagination: expect cursor as "<iso_datetime>|<uuid>" to handle ties
+            next_cursor: Optional[str] = None
+            items: List[Post] = []
+
+            if cursor:
+                # parse cursor into (created_at, id)
+                try:
+                    created_at_str, id_str = cursor.split("|", 1)
+                    # support trailing Z (UTC) by replacing Z with +00:00
+                    if created_at_str.endswith("Z"):
+                        created_at_str = created_at_str[:-1] + "+00:00"
+                    cursor_dt = datetime.fromisoformat(created_at_str)
+                    cursor_id = UUID(id_str)
+                except Exception as exc:
+                    logger.exception("Invalid cursor provided: %s", cursor)
+                    return None, (400, "Invalid cursor format; expected '<ISO datetime>|<uuid>'")
+
+                # Filter to records strictly older than the cursor (created_at < cursor_dt)
+                # or same timestamp but id < cursor_id (because we order by id desc)
+                items = (
+                    query.filter(
+                        or_(
+                            Post.created_at < cursor_dt,
+                            and_(Post.created_at == cursor_dt, Post.id < cursor_id),
+                        )
+                    )
+                    .limit(per_page)
+                    .all()
+                )
+
+                # For keyset pagination we avoid an expensive full COUNT; set total to None
+                total = None
+
+            else:
+                # Offset pagination fallback (keeps total count for compatibility)
+                items = query.offset((page - 1) * per_page).limit(per_page).all()
+                try:
+                    total = self.db.query(Post).count()
+                except Exception:
+                    logger.exception("Failed to compute total count for posts")
+                    total = None
+
+            # Compute next cursor for keyset clients (use last item's created_at and id)
+            if items:
+                last = items[-1]
+                try:
+                    next_cursor = f"{last.created_at.isoformat()}|{last.id}"
+                except Exception:
+                    logger.exception("Failed to compute next_cursor for post id=%s", getattr(last, "id", None))
+                    next_cursor = None
+
+            result = {"items": items, "total": total, "next_cursor": next_cursor}
+            return result, None
+
+        except Exception as exc:
+            logger.error("Error listing posts | page=%s | per_page=%s | error=%s", page, per_page, exc)
+            return None, (500, "Failed to fetch posts")
 
     async def create_post_with_files(
         self,
@@ -291,3 +377,83 @@ class CommunityPostService:
                 exc
             )
             return False, (500, "Failed to remove photo from post")
+
+    def get_all_posts(
+        self,
+        page: int = 1,
+        limit: int = 20,
+        sort_by: str = "created_at",
+        order: str = "desc"
+    ) -> Dict[str, Any]:
+        """
+        Get all posts with pagination and sorting
+        """
+        try:
+            # Calculate offset
+            offset = (page - 1) * limit
+            
+            # Simple query without joinedload
+            query = self.db.query(Post)
+            
+            # Apply sorting
+            if hasattr(Post, sort_by):
+                if order.lower() == "asc":
+                    query = query.order_by(asc(getattr(Post, sort_by)))
+                else:
+                    query = query.order_by(desc(getattr(Post, sort_by)))
+            else:
+                query = query.order_by(desc(Post.created_at))
+            
+            # Get total count
+            total = query.count()
+            
+            # Apply pagination
+            posts = query.offset(offset).limit(limit).all()
+            
+            # Format response
+            posts_data = []
+            for post in posts:
+                # Get photos
+                photos = PostPhoto.fetch_all(self.db, post_id=post.id)
+                
+                # Get counts
+                likes_count = PostLike.fetch_all(self.db, post_id=post.id)
+                comments_count = PostComment.fetch_all(self.db, post_id=post.id)
+                
+                # Format photos with post_id
+                photos_response = []
+                for photo in photos:
+                    photos_response.append({
+                        "id": photo.id,
+                        "post_id": photo.post_id,
+                        "url": photo.url
+                    })
+                
+                posts_data.append({
+                    "id": post.id,
+                    "user_id": post.user_id,
+                    "title": post.title,
+                    "content": post.content,
+                    "views": post.views,
+                    "created_at": post.created_at,
+                    "photos": photos_response,
+                    "likes_count": len(likes_count),
+                    "comments_count": len(comments_count)
+                })
+            
+            return {
+                "posts": posts_data,
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": total,
+                    "pages": (total + limit - 1) // limit
+                }
+            }
+            
+        except Exception as exc:
+            logger.error(
+                "Error fetching all posts | error=%s",
+                exc
+            )
+            raise

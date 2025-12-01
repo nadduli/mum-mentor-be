@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -33,3 +33,19 @@ class PostPhotoResponse(BaseModel):
 
 class CommentCreateRequest(BaseModel):
     comment: str
+
+
+# schemas for paginated response
+class PostsPagination(BaseModel):
+    page: int
+    limit: int
+    total: int
+    pages: int
+
+
+class AllPostsResponse(BaseModel):
+    posts: List[PostResponse]
+    pagination: PostsPagination
+
+
+PostResponse.model_rebuild()

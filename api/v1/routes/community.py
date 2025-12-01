@@ -1,17 +1,24 @@
 """
 This module contains the API endpoints for managing community posts.
 """
+from typing import Optional, List
 from uuid import UUID
 from typing import List
 
-from fastapi import APIRouter, Depends, status, Form, File, UploadFile, Request
+from fastapi import (
+    APIRouter, Depends, status, Form, File, UploadFile, Request, Query
+)
 from sqlalchemy.orm import Session
 
 from api.db.database import get_db
 from api.utils.deps import get_current_user
 from api.v1.models.user.user import User
 from api.v1.services.community import CommunityService
-from api.v1.schemas.community_posts import CommentCreateRequest 
+from api.v1.schemas.community_posts import (
+    CommentCreateRequest,
+    PostCreateRequest,
+    PostPhotoResponse
+)
 from api.v1.schemas.community import (
     PostResponse,
     PostResponseWrapper,
@@ -19,12 +26,99 @@ from api.v1.schemas.community import (
     LikeToggleResponse,
     LikeResponseWrapper,
 )
-from api.v1.schemas.community_posts import PostCreateRequest, PostPhotoResponse
 from api.v1.services.community_posts import CommunityPostService
 from api.utils.responses import success_response, fail_response
 from api.utils.logger import logger
 
 router = APIRouter(prefix="/community/posts", tags=["Community"])
+
+
+@router.get(
+    "/list",
+    status_code=status.HTTP_200_OK,
+    summary="List community posts (cursor-based pagination)"
+)
+def list_posts(
+    page: int = Query(1, ge=1, description="Page number (used when cursor is not provided)"),
+    per_page: int = Query(20, ge=1, le=100, description="Number of posts per page"),
+    cursor: Optional[str] = Query(None, description="Keyset cursor in format '<ISO datetime>|<uuid>'. If set, uses keyset pagination and ignores page."),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Return paginated community posts ordered by newest first.
+    
+    Supports two pagination modes:
+    1. Keyset pagination: Provide `cursor` parameter
+    2. Offset pagination: Use `page` and `per_page` parameters
+    
+    **Requires Authentication.**
+    """
+    service = CommunityPostService(db)
+    result, error = service.list_posts(page=page, per_page=per_page, cursor=cursor)
+
+    if error:
+        status_code, message = error
+        logger.warning(
+            "List posts failed | page=%s | per_page=%s | status=%s | message=%s",
+            page,
+            per_page,
+            status_code,
+            message,
+        )
+        return fail_response(status_code=status_code, message=message)
+
+    items = result.get("items", [])
+    total = result.get("total", 0)
+    next_cursor = result.get("next_cursor")
+
+    # Format posts with photos
+    posts_data = []
+    for post in items:
+        # Get photos for this post
+        photos = []
+        if hasattr(post, 'photos') and post.photos:
+            photos = [
+                {
+                    "id": photo.id,
+                    "post_id": photo.post_id,
+                    "url": photo.url
+                } for photo in post.photos
+            ]
+        
+        posts_data.append({
+            "id": post.id,
+            "user_id": post.user_id,
+            "title": post.title,
+            "content": post.content,
+            "views": post.views,
+            "created_at": post.created_at,
+            "photos": photos,
+            "likes_count": len(post.likes) if hasattr(post, 'likes') else 0,
+            "comments_count": len(post.comments) if hasattr(post, 'comments') else 0
+        })
+
+    # Calculate total pages for offset pagination
+    total_pages = 0
+    if not cursor and per_page > 0:
+        total_pages = (total + per_page - 1) // per_page
+
+    data = {
+        "posts": posts_data,
+        "pagination": {
+            "page": page if not cursor else None,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages if not cursor else None,
+            "next_cursor": next_cursor,
+        },
+    }
+
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="Posts fetched successfully",
+        data=data
+    )
 
 
 @router.get(
@@ -55,7 +149,9 @@ def view_post(
     )
 
     return PostResponseWrapper(
-        status="success", message="Post retrieved successfully", data=response_data
+        status="success",
+        message="Post retrieved successfully",
+        data=response_data
     )
 
 
@@ -80,7 +176,9 @@ def toggle_post_like(
         session, post_id, user_uuid
     )
 
-    message = "Post liked successfully" if is_liked else "Post unliked successfully"
+    message = (
+        "Post liked successfully" if is_liked else "Post unliked successfully"
+    )
 
     return LikeResponseWrapper(
         status="success",
@@ -90,8 +188,8 @@ def toggle_post_like(
 
 
 @router.post(
-    "/", 
-    status_code=status.HTTP_201_CREATED, 
+    "/",
+    status_code=status.HTTP_201_CREATED,
     summary="Create a community post with existing photos"
 )
 def create_post_json(
@@ -101,14 +199,14 @@ def create_post_json(
 ):
     """
     Create a new community post using existing photo IDs.
-    
+
     JSON Request:
     {
         "title": "My Post",
         "content": "Content here",
         "photo_ids": ["uuid1", "uuid2"]  # Optional - existing photo IDs
     }
-    
+
     **Requires Authentication.**
     """
     service = CommunityPostService(db)
@@ -134,7 +232,7 @@ def create_post_json(
                 url=photo.url
             ) for photo in post.photos
         ]
-    
+
     response_data = {
         "id": post.id,
         "user_id": post.user_id,
@@ -149,6 +247,78 @@ def create_post_json(
         status_code=status.HTTP_201_CREATED,
         message="Post created successfully",
         data=response_data,
+    )
+
+
+@router.get(
+    "/",
+    status_code=status.HTTP_200_OK,
+    summary="List community posts (public feed)"
+)
+def list_posts(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(
+        20, ge=1, le=100, description="Number of posts per page"
+    ),
+    cursor: Optional[str] = Query(
+        None,
+        description=(
+            "Keyset cursor in format '<ISO datetime>|<uuid>'. "
+            "If set, uses keyset pagination and ignores page."
+        )
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Return paginated community posts ordered by newest first."""
+    service = CommunityPostService(db)
+    result, error = service.list_posts(
+        page=page, per_page=per_page, cursor=cursor
+    )
+
+    if error:
+        status_code, message = error
+        logger.warning(
+            "List posts failed | page=%s | per_page=%s | status=%s | msg=%s",
+            page,
+            per_page,
+            status_code,
+            message,
+        )
+        return fail_response(status_code=status_code, message=message)
+
+    items = result.get("items", [])
+    total = result.get("total", 0)
+    next_cursor = result.get("next_cursor")
+
+    posts_data = [
+        PostResponse.model_validate(item).model_dump() for item in items
+    ]
+
+    total_pages = 0
+    try:
+        if per_page:
+            total_pages = (total + per_page - 1) // per_page
+        else:
+            total_pages = 0
+    except Exception:
+        total_pages = 0
+
+    data = {
+        "posts": posts_data,
+        "meta": {
+            "page": page if not cursor else None,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages if not cursor else None,
+            "next_cursor": next_cursor,
+        },
+    }
+
+    return success_response(
+        status_code=status.HTTP_200_OK,
+        message="Posts fetched successfully",
+        data=data
     )
 
 
@@ -167,29 +337,28 @@ async def create_post_with_upload(
 ):
     """
     Create a new community post and upload photos in one request.
-    
+
     Form Data:
     - title: string
     - content: string
     - files: list of image files
-    
+
     **Requires Authentication.**
     """
     service = CommunityPostService(db)
-    
+
     post, error = await service.create_post_with_files(
         user_id=current_user.id,
         title=title,
         content=content,
         files=files,
         request=request
-        # Note: db is already passed to service constructor
     )
 
     if error:
         status_code, message = error
         logger.warning(
-            "Create post with upload failed | user_id=%s | status=%s | message=%s",
+            "Create post upload fail | user=%s | status=%s | message=%s",
             current_user.id,
             status_code,
             message,
@@ -206,7 +375,7 @@ async def create_post_with_upload(
                 url=photo.url
             ) for photo in post.photos
         ]
-    
+
     response_data = {
         "id": post.id,
         "user_id": post.user_id,
