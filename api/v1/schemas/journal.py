@@ -44,14 +44,28 @@ class JournalEdit(BaseModel):
     entry_date: Optional[datetime] = None
     category: Optional[str] = None
     mood: Optional[str] = None
-    photos: Optional[List[str]] = None
-    content: Optional[str] = None
+    photo_urls: Optional[List[str]] = None
+    content: Optional[str] = Field(None, alias="thoughts")
 
 class JournalData(BaseModel):
     id: uuid.UUID
     title: str
+    content: str
+    mood: Optional[str]
+    entry_date: datetime
+    created_at: datetime
+    updated_at: Optional[datetime]
+    category_id: Optional[uuid.UUID] = None
+    class Config:
+        from_attributes = True
 
 class JournalResponse(BaseModel):
     status: str
     message: str
     data: JournalData
+
+class GetAllJournalsQuery(BaseModel):
+    limit: int = Field(10, ge=1, le=100, description="Number of entries to return")
+    offset: int = Field(0, ge=0, description="Number of entries to skip")
+    sort_by: str = Field("entry_date", description="Field to sort by (entry_date or created_at)")
+    order: str = Field("desc", description="Sort order (asc or desc)")
