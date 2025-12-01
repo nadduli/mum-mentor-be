@@ -10,6 +10,7 @@ from api.db.database import get_db
 from api.utils.deps import get_current_user
 from api.v1.models.user.user import User
 from api.v1.services.community import CommunityService
+from api.v1.schemas.community_posts import CommentCreateRequest 
 from api.v1.schemas.community import (
     PostResponse,
     PostResponseWrapper,
@@ -116,4 +117,23 @@ def create_post(
         status_code=status.HTTP_201_CREATED,
         message="Post created successfully",
         data=response.model_dump(),
+    )
+
+@router.post("/{post_id}/comment", status_code=status.HTTP_201_CREATED)
+def comment_on_post(
+    post_id: UUID,
+    payload: CommentCreateRequest,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Adds a comment to a community post.
+    """
+    comment = CommunityService.add_comment_to_post(
+        session, post_id, current_user.id, payload.comment
+    )
+    return success_response(
+        status_code=status.HTTP_201_CREATED,
+        message="Comment added successfully",
+        data={"id": str(comment.id), "comment": comment.comment}
     )

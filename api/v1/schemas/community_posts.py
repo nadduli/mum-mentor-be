@@ -19,3 +19,6 @@ class PostResponse(BaseModel):
     content: str
     views: int
     created_at: datetime
+
+class CommentCreateRequest(BaseModel):
+    comment: str

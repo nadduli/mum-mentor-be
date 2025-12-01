@@ -1,3 +1,4 @@
+from api.v1.models.community.post_comments import PostComment
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 import uuid
@@ -7,7 +8,6 @@ from api.v1.models.community.post_likes import PostLike
 from api.utils.logger import logger
 
 class CommunityService:
-    
     @staticmethod
     def get_post_by_id(session: Session, post_id: uuid.UUID) -> Post:
         """
@@ -105,3 +105,22 @@ class CommunityService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to process like action"
             )
+    
+    @staticmethod
+    def add_comment_to_post(session: Session, post_id: uuid.UUID, user_id: uuid.UUID, comment: str) -> PostComment:
+        """
+        Add a comment to a post (no nested comments).
+        """
+        post = session.query(Post).filter(Post.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+        new_comment = PostComment(
+                post_id=post_id,
+                user_id=user_id,
+                comment=comment
+        )
+        session.add(new_comment)
+        session.commit()
+        session.refresh(new_comment)
+        return new_comment
+        
