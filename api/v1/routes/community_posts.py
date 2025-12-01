@@ -46,7 +46,7 @@ def create_post(
 def list_posts(
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(20, ge=1, le=100, description="Number of posts per page"),
-    cursor: Optional[str] = Query(None, description="Keyset cursor (ISO datetime). If set, uses keyset pagination and ignores page."),
+    cursor: Optional[str] = Query(None, description="Keyset cursor in format '<ISO datetime>|<uuid>'. If set, uses keyset pagination and ignores page."),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -80,10 +80,10 @@ def list_posts(
     data = {
         "posts": posts_data,
         "meta": {
-            "page": page,
+            "page": page if not cursor else None,
             "per_page": per_page,
             "total": total,
-            "total_pages": total_pages,
+            "total_pages": total_pages if not cursor else None,
             "next_cursor": next_cursor,
         },
     }

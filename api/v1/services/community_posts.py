@@ -57,7 +57,7 @@ class CommunityPostService:
         - Keyset pagination when `cursor` (ISO datetime string) is provided: returns posts with created_at < cursor.
         - Offset pagination when `cursor` is None: uses page/per_page with OFFSET.
 
-        Always returns a dict with `items` (list of Post), `total` (int) and `next_cursor` (str|None).
+        Always returns a dict with `items` (list of Post), `total` (int|None) and `next_cursor` (str|None).
         """
         try:
             if page < 1:
