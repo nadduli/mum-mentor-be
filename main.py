@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from api.utils.responses import validation_error_response
 from api.v1.routes import app as api_v1_router
+from api.middleware.correlation_middleware import CorrelationIdMiddleware
 from collections import defaultdict
 
 import logging
@@ -23,6 +24,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/api/redoc"
 )
+
+# Add Correlation ID middleware
+app.add_middleware(CorrelationIdMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

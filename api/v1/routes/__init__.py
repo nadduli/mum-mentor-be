@@ -11,6 +11,7 @@ from .album import router as album_router
 from .auth import auth_router, google_auth_router
 from .child_profile import router as child_profile_router
 from .community import router as community_router
+from .community_posts import router as community_posts_router
 from .downloads import router as downloads_router
 from .faq import router as faq_router
 from .image import router as image_router
@@ -53,6 +54,7 @@ app.include_router(task_router)
 
 # --- Community and Resources ---
 app.include_router(community_router)
+app.include_router(community_posts_router)
 app.include_router(resource_router)
 app.include_router(search_router)
 

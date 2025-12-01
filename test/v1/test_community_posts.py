@@ -108,6 +108,59 @@ def test_create_post_server_error(mock_db_session, authenticated_user, monkeypat
     assert response.status_code == 500
 
 
+def test_list_posts_public_feed_success(mock_db_session, monkeypatch):
+    # Authenticated request: override current user
+    app.dependency_overrides[get_current_user] = lambda: _make_user()
+    post1 = _make_post()
+    post2 = _make_post()
+    # ensure ordering: post2 newer than post1
+    post1.created_at = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    post2.created_at = datetime(2021, 1, 1, tzinfo=timezone.utc)
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.list_posts",
+        lambda self, page, per_page: ({"items": [post2, post1], "total": 2}, None),
+    )
+
+    response = client.get("/api/v1/community/posts/?page=1&per_page=10")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "success"
+    assert "data" in body
+    assert "posts" in body["data"]
+    assert len(body["data"]["posts"]) == 2
+    # newest should be first
+    assert body["data"]["posts"][0]["created_at"] >= body["data"]["posts"][1]["created_at"]
+
+
+def test_list_posts_pagination(mock_db_session, monkeypatch):
+    # Authenticated request: override current user
+    app.dependency_overrides[get_current_user] = lambda: _make_user()
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.list_posts",
+        lambda self, page, per_page: ({"items": [], "total": 0}, None),
+    )
+
+    response = client.get("/api/v1/community/posts/?page=2&per_page=5")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["meta"]["page"] == 2
+    assert body["data"]["meta"]["per_page"] == 5
+
+
+def test_list_posts_server_error(mock_db_session, monkeypatch):
+    app.dependency_overrides[get_current_user] = lambda: _make_user()
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.list_posts",
+        lambda self, page, per_page: (None, (500, "Failed to fetch posts")),
+    )
+
+    response = client.get("/api/v1/community/posts/")
+    assert response.status_code == 500
+
+
 def test_delete_post_success(mock_db_session, authenticated_user, monkeypatch):
     post_id = uuid.uuid4()
 

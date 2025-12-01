@@ -19,7 +19,7 @@ from api.v1.services.memories_service import MemoriesService
 UPLOAD_DIR = "app/uploads"
 router = APIRouter(prefix="/images", tags=["Images"])
 
-
+@router.post("/upload", response_model=PhotoResponse, status_code=201)
 async def upload_photo(
     request: Request, file: UploadFile, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
