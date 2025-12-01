@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from api.db.database import get_db
 from api.utils.deps import get_current_user
@@ -43,14 +44,15 @@ def create_post(
 
 @router.get("/", status_code=status.HTTP_200_OK, summary="List community posts (public feed)")
 def list_posts(
-    page: int = 1,
-    per_page: int = 20,
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Number of posts per page"),
+    cursor: Optional[str] = Query(None, description="Keyset cursor (ISO datetime). If set, uses keyset pagination and ignores page."),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Return paginated community posts ordered by newest first (public feed)."""
     service = CommunityPostService(db)
-    result, error = service.list_posts(page=page, per_page=per_page)
+    result, error = service.list_posts(page=page, per_page=per_page, cursor=cursor)
 
     if error:
         status_code, message = error
@@ -65,6 +67,7 @@ def list_posts(
 
     items = result.get("items", [])
     total = result.get("total", 0)
+    next_cursor = result.get("next_cursor")
 
     posts_data = [PostResponse.model_validate(item).model_dump() for item in items]
 
@@ -81,6 +84,7 @@ def list_posts(
             "per_page": per_page,
             "total": total,
             "total_pages": total_pages,
+            "next_cursor": next_cursor,
         },
     }
 

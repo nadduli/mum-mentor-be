@@ -1,6 +1,7 @@
 from typing import Optional, Tuple, List
 from uuid import UUID
 from datetime import datetime
+from sqlalchemy import and_, or_
 
 from sqlalchemy.orm import Session
 
@@ -67,33 +68,56 @@ class CommunityPostService:
             # Base query ordered newest-first
             query = self.db.query(Post).order_by(Post.created_at.desc(), Post.id.desc())
 
-            # Keyset pagination: use cursor (ISO datetime) to fetch items created before the cursor
+            # Keyset pagination: expect cursor as "<iso_datetime>|<uuid>" to handle ties
             next_cursor: Optional[str] = None
-            if cursor:
-                try:
-                    cursor_dt = datetime.fromisoformat(cursor)
-                except Exception:
-                    return None, (400, "Invalid cursor format; expected ISO datetime")
+            items: List[Post] = []
 
-                items: List[Post] = (
-                    query.filter(Post.created_at < cursor_dt).limit(per_page).all()
+            if cursor:
+                # parse cursor into (created_at, id)
+                try:
+                    created_at_str, id_str = cursor.split("|", 1)
+                    # support trailing Z (UTC) by replacing Z with +00:00
+                    if created_at_str.endswith("Z"):
+                        created_at_str = created_at_str[:-1] + "+00:00"
+                    cursor_dt = datetime.fromisoformat(created_at_str)
+                    cursor_id = UUID(id_str)
+                except Exception as exc:
+                    logger.exception("Invalid cursor provided: %s", cursor)
+                    return None, (400, "Invalid cursor format; expected '<ISO datetime>|<uuid>'")
+
+                # Filter to records strictly older than the cursor (created_at < cursor_dt)
+                # or same timestamp but id < cursor_id (because we order by id desc)
+                items = (
+                    query.filter(
+                        or_(
+                            Post.created_at < cursor_dt,
+                            and_(Post.created_at == cursor_dt, Post.id < cursor_id),
+                        )
+                    )
+                    .limit(per_page)
+                    .all()
                 )
 
-            else:
-                # Offset pagination fallback
-                items = query.offset((page - 1) * per_page).limit(per_page).all()
+                # For keyset pagination we avoid an expensive full COUNT; set total to None
+                total = None
 
-            # Compute next cursor for keyset clients (use last item's created_at)
+            else:
+                # Offset pagination fallback (keeps total count for compatibility)
+                items = query.offset((page - 1) * per_page).limit(per_page).all()
+                try:
+                    total = self.db.query(Post).count()
+                except Exception:
+                    logger.exception("Failed to compute total count for posts")
+                    total = None
+
+            # Compute next cursor for keyset clients (use last item's created_at and id)
             if items:
                 last = items[-1]
-                # Use ISO format (UTC-aware)
                 try:
-                    next_cursor = last.created_at.isoformat()
+                    next_cursor = f"{last.created_at.isoformat()}|{last.id}"
                 except Exception:
+                    logger.exception("Failed to compute next_cursor for post id=%s", getattr(last, "id", None))
                     next_cursor = None
-
-            # Total count (kept for compatibility with existing responses)
-            total = self.db.query(Post).count()
 
             result = {"items": items, "total": total, "next_cursor": next_cursor}
             return result, None
