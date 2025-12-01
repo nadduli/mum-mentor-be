@@ -5,7 +5,7 @@ from typing import Optional, List
 from uuid import UUID
 
 from fastapi import (
-    APIRouter, Depends, status, Form, File, UploadFile, Request, Query
+    APIRouter, Depends, status, Form, File, UploadFile, Request, Query, HTTPException
 )
 from sqlalchemy.orm import Session
 
