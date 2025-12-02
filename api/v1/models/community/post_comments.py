@@ -22,6 +22,7 @@ class PostComment(BaseModel):
     comment: Mapped[str] = mapped_column(String, nullable=False)
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     post: Mapped["Post"] = relationship("Post", back_populates="comments")

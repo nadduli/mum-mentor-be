@@ -113,18 +113,9 @@ def view_post(
     Increments the view count.
     **Requires Authentication.**
     """
-    post = CommunityService.get_post_by_id(session, post_id)
+    post = CommunityService.get_post_by_id(session, post_id, current_user.id)
 
-    response_data = CommunityPostResponse(
-        id=post.id,
-        title=post.title,
-        content=post.content,
-        created_at=post.created_at,
-        views=post.views,
-        photos=[PostPhotoDTO.model_validate(p) for p in post.photos],
-        likes_count=len(post.likes),
-        comments_count=len(post.comments),
-    )
+    response_data = CommunityPostResponse.model_validate(post)
 
     return PostResponseWrapper(
         status="success",
