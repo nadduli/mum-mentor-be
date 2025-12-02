@@ -1,7 +1,7 @@
 from typing import Optional, Tuple, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, Integer
 import json
 from fastapi import UploadFile, Request
 from sqlalchemy.orm import Session, subqueryload, joinedload
@@ -155,22 +155,54 @@ class CommunityPostService:
                 .subquery()
             )
 
-            # Base query with joins for counts
-            query = (
-                self.db.query(
-                    Post,
-                    func.coalesce(likes_subquery.c.likes_count, 0).label("likes_count"),
-                    func.coalesce(comments_subquery.c.comments_count, 0).label("comments_count")
+            # Create subquery for is_liked (if user_id provided)
+            if user_id:
+                is_liked_subquery = (
+                    select(
+                        PostLike.post_id,
+                        func.cast(1, Integer).label("user_liked")
+                    )
+                    .where(PostLike.user_id == user_id)
+                    .group_by(PostLike.post_id)
+                    .subquery()
                 )
-                .outerjoin(likes_subquery, Post.id == likes_subquery.c.post_id)
-                .outerjoin(comments_subquery, Post.id == comments_subquery.c.post_id)
-                .options(
-                    joinedload(Post.user),
-                    subqueryload(Post.photos),
-                    subqueryload(Post.comments).joinedload('user')
+
+                # Base query with joins for counts and is_liked
+                query = (
+                    self.db.query(
+                        Post,
+                        func.coalesce(likes_subquery.c.likes_count, 0).label("likes_count"),
+                        func.coalesce(comments_subquery.c.comments_count, 0).label("comments_count"),
+                        func.coalesce(is_liked_subquery.c.user_liked, 0).label("is_liked")
+                    )
+                    .outerjoin(likes_subquery, Post.id == likes_subquery.c.post_id)
+                    .outerjoin(comments_subquery, Post.id == comments_subquery.c.post_id)
+                    .outerjoin(is_liked_subquery, Post.id == is_liked_subquery.c.post_id)
+                    .options(
+                        joinedload(Post.user),
+                        subqueryload(Post.photos),
+                        subqueryload(Post.comments).joinedload(PostComment.user)
+                    )
+                    .order_by(Post.created_at.desc(), Post.id.desc())
                 )
-                .order_by(Post.created_at.desc(), Post.id.desc())
-            )
+            else:
+                # Base query with joins for counts only
+                query = (
+                    self.db.query(
+                        Post,
+                        func.coalesce(likes_subquery.c.likes_count, 0).label("likes_count"),
+                        func.coalesce(comments_subquery.c.comments_count, 0).label("comments_count"),
+                        func.cast(0, Integer).label("is_liked")
+                    )
+                    .outerjoin(likes_subquery, Post.id == likes_subquery.c.post_id)
+                    .outerjoin(comments_subquery, Post.id == comments_subquery.c.post_id)
+                    .options(
+                        joinedload(Post.user),
+                        subqueryload(Post.photos),
+                        subqueryload(Post.comments).joinedload(PostComment.user)
+                    )
+                    .order_by(Post.created_at.desc(), Post.id.desc())
+                )
 
             # Keyset pagination
             next_cursor: Optional[str] = None
@@ -206,22 +238,13 @@ class CommunityPostService:
                     logger.exception("Failed to compute total count for posts")
                     total = None
 
-            # Extract posts and attach counts as attributes
+            # Extract posts and attach counts and is_liked as attributes
             items = []
             for result in results:
                 post = result[0]
                 post.likes_count = result[1]
                 post.comments_count = result[2]
-                
-                # Check if current user liked this post
-                if user_id:
-                    is_liked = self.db.query(PostLike).filter(
-                        PostLike.post_id == post.id,
-                        PostLike.user_id == user_id
-                    ).first() is not None
-                    post.is_liked = is_liked
-                else:
-                    post.is_liked = False
+                post.is_liked = bool(result[3]) if result[3] is not None else False
                 
                 items.append(post)
 
