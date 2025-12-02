@@ -1,4 +1,3 @@
-
 """
 This module contains the API endpoints for managing milestones.
 """
