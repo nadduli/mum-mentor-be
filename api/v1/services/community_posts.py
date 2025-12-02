@@ -166,7 +166,8 @@ class CommunityPostService:
                 .outerjoin(comments_subquery, Post.id == comments_subquery.c.post_id)
                 .options(
                     joinedload(Post.user),
-                    subqueryload(Post.photos)
+                    subqueryload(Post.photos),
+                    subqueryload(Post.comments).joinedload('user')
                 )
                 .order_by(Post.created_at.desc(), Post.id.desc())
             )
