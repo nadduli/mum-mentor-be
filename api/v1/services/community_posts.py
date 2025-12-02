@@ -9,6 +9,7 @@ from sqlalchemy import desc, asc
 from sqlalchemy import func, select
 from api.v1.models.community.post_likes import PostLike
 from api.v1.models.community.post_comments import PostComment 
+from sqlalchemy.exc import SQLAlchemyError
 
 from api.utils.logger import logger
 from api.v1.models.community.posts import Post
@@ -88,6 +89,37 @@ class CommunityPostService:
             self.db.rollback()
             return None, (500, "Failed to create post")
 
+    def delete_post(self, *, post_id: UUID, user_id: UUID) -> Tuple[bool, Optional[Tuple[int, str]]]:
+        """Delete a community post if it belongs to the given user.
+
+        Returns:
+            (True, None) on success.
+            (False, (status_code, message)) on failure.
+        """
+        try:
+            # Fetch the post
+            post = self.db.query(Post).filter(Post.id == post_id).with_for_update().first()
+            if not post:
+                return False, (404, "Post not found")
+
+            # Authorization check
+            if post.user_id != user_id:
+                return False, (403, "Not authorized to delete this post")
+
+            # Perform deletion
+            self.db.delete(post)
+            self.db.commit()
+            logger.info("Community post deleted | post_id=%s | user_id=%s", post_id, user_id)
+            return True, None
+        except SQLAlchemyError as exc:
+            self.db.rollback()
+            logger.error(
+                "Error deleting community post | post_id=%s | user_id=%s | error=%s",
+                post_id,
+                user_id,
+                exc,
+            )
+            return False, (500, "Failed to delete post")
 
     def list_posts(
         self,

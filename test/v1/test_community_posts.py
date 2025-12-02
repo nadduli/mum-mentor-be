@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime, timezone
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, ANY
+from sqlalchemy.exc import SQLAlchemyError
 
 from fastapi.testclient import TestClient
 
@@ -10,6 +11,7 @@ from api.v1.models.user.user import User
 from api.v1.models.community.posts import Post
 from api.db.database import get_db
 from api.utils.deps import get_current_user
+from api.v1.services.community_posts import CommunityPostService
 
 client = TestClient(app)
 
@@ -44,11 +46,18 @@ def _make_post(user_id=None):
     )
 
 
-def test_create_post_success(mock_db_session, monkeypatch):
+@pytest.fixture
+def authenticated_user():
     user = _make_user()
     app.dependency_overrides[get_current_user] = lambda: user
+    yield user
+    app.dependency_overrides.clear()
 
-    post_obj = _make_post(user_id=uuid.UUID(user.id))
+
+# --- Route Tests ---
+
+def test_create_post_success(mock_db_session, authenticated_user, monkeypatch):
+    post_obj = _make_post(user_id=uuid.UUID(authenticated_user.id))
 
     monkeypatch.setattr(
         "api.v1.services.community_posts.CommunityPostService.create_post",
@@ -66,17 +75,12 @@ def test_create_post_success(mock_db_session, monkeypatch):
     assert body["data"]["content"] == post_obj.content
 
 
-def test_create_post_invalid_payload_missing_title(mock_db_session):
-    # ensure auth so validation runs after auth
-    app.dependency_overrides[get_current_user] = lambda: _make_user()
-
+def test_create_post_invalid_payload_missing_title(mock_db_session, authenticated_user):
     response = client.post("/api/v1/community/posts/", json={"content": "x"})
     assert response.status_code == 422
 
 
-def test_create_post_title_too_long(mock_db_session):
-    app.dependency_overrides[get_current_user] = lambda: _make_user()
-
+def test_create_post_title_too_long(mock_db_session, authenticated_user):
     long_title = "x" * 201
     response = client.post(
         "/api/v1/community/posts/", json={"title": long_title, "content": "ok"}
@@ -92,10 +96,7 @@ def test_create_post_no_auth(mock_db_session):
     assert response.status_code == 401
 
 
-def test_create_post_server_error(mock_db_session, monkeypatch):
-    user = _make_user()
-    app.dependency_overrides[get_current_user] = lambda: user
-
+def test_create_post_server_error(mock_db_session, authenticated_user, monkeypatch):
     monkeypatch.setattr(
         "api.v1.services.community_posts.CommunityPostService.create_post",
         lambda self, user_id, payload: (None, (500, "Failed to create post")),
@@ -158,3 +159,149 @@ def test_list_posts_server_error(mock_db_session, monkeypatch):
 
     response = client.get("/api/v1/community/posts/")
     assert response.status_code == 500
+
+
+def test_delete_post_success(mock_db_session, authenticated_user, monkeypatch):
+    post_id = uuid.uuid4()
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.delete_post",
+        lambda self, post_id, user_id: (True, None),
+    )
+
+    response = client.delete(f"/api/v1/community/posts/{post_id}")
+    assert response.status_code == 204
+
+
+def test_delete_post_not_found(mock_db_session, authenticated_user, monkeypatch):
+    post_id = uuid.uuid4()
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.delete_post",
+        lambda self, post_id, user_id: (False, (404, "Post not found")),
+    )
+
+    response = client.delete(f"/api/v1/community/posts/{post_id}")
+    assert response.status_code == 404
+    assert response.json()["message"] == "Post not found"
+
+
+def test_delete_post_forbidden(mock_db_session, authenticated_user, monkeypatch):
+    post_id = uuid.uuid4()
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.delete_post",
+        lambda self, post_id, user_id: (False, (403, "Not authorized to delete this post")),
+    )
+
+    response = client.delete(f"/api/v1/community/posts/{post_id}")
+    assert response.status_code == 403
+    assert response.json()["message"] == "Not authorized to delete this post"
+
+
+def test_delete_post_server_error(mock_db_session, authenticated_user, monkeypatch):
+    post_id = uuid.uuid4()
+
+    monkeypatch.setattr(
+        "api.v1.services.community_posts.CommunityPostService.delete_post",
+        lambda self, post_id, user_id: (False, (500, "Failed to delete post")),
+    )
+
+    response = client.delete(f"/api/v1/community/posts/{post_id}")
+    assert response.status_code == 500
+    assert response.json()["message"] == "Failed to delete post"
+
+
+# --- Service Tests ---
+
+def test_service_delete_post_success(mock_db_session):
+    # Setup
+    user_id = uuid.uuid4()
+    post_id = uuid.uuid4()
+    post = Post(id=post_id, user_id=user_id)
+
+    # Mock DB query result
+    # Mock DB query result
+    mock_query = mock_db_session.query.return_value.filter.return_value
+    mock_query.with_for_update.return_value = mock_query
+    mock_query.first.return_value = post
+
+    # Execute
+    service = CommunityPostService(mock_db_session)
+    success, error = service.delete_post(post_id=post_id, user_id=user_id)
+
+    # Verify
+    assert success is True
+    assert error is None
+    mock_db_session.delete.assert_called_once_with(post)
+    mock_db_session.commit.assert_called_once()
+
+
+def test_service_delete_post_not_found(mock_db_session):
+    # Setup
+    user_id = uuid.uuid4()
+    post_id = uuid.uuid4()
+
+    # Mock DB query result (None)
+    mock_query = mock_db_session.query.return_value.filter.return_value
+    mock_query.with_for_update.return_value = mock_query
+    mock_query.first.return_value = None
+
+    # Execute
+    service = CommunityPostService(mock_db_session)
+    success, error = service.delete_post(post_id=post_id, user_id=user_id)
+
+    # Verify
+    assert success is False
+    assert error == (404, "Post not found")
+    mock_db_session.delete.assert_not_called()
+    mock_db_session.commit.assert_not_called()
+
+
+def test_service_delete_post_forbidden(mock_db_session):
+    # Setup
+    user_id = uuid.uuid4()
+    other_user_id = uuid.uuid4()
+    post_id = uuid.uuid4()
+    post = Post(id=post_id, user_id=other_user_id)  # Owned by someone else
+
+    # Mock DB query result
+    # Mock DB query result
+    mock_query = mock_db_session.query.return_value.filter.return_value
+    mock_query.with_for_update.return_value = mock_query
+    mock_query.first.return_value = post
+
+    # Execute
+    service = CommunityPostService(mock_db_session)
+    success, error = service.delete_post(post_id=post_id, user_id=user_id)
+
+    # Verify
+    assert success is False
+    assert error == (403, "Not authorized to delete this post")
+    mock_db_session.delete.assert_not_called()
+    mock_db_session.commit.assert_not_called()
+
+
+def test_service_delete_post_db_error(mock_db_session):
+    # Setup
+    user_id = uuid.uuid4()
+    post_id = uuid.uuid4()
+    post = Post(id=post_id, user_id=user_id)
+
+    # Mock DB query result
+    # Mock DB query result
+    mock_query = mock_db_session.query.return_value.filter.return_value
+    mock_query.with_for_update.return_value = mock_query
+    mock_query.first.return_value = post
+    
+    # Mock commit to raise exception
+    mock_db_session.commit.side_effect = SQLAlchemyError("DB Error")
+
+    # Execute
+    service = CommunityPostService(mock_db_session)
+    success, error = service.delete_post(post_id=post_id, user_id=user_id)
+
+    # Verify
+    assert success is False
+    assert error == (500, "Failed to delete post")
+    mock_db_session.rollback.assert_called_once()
