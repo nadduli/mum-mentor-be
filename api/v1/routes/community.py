@@ -55,7 +55,7 @@ def list_posts(
     **Requires Authentication.**
     """
     service = CommunityPostService(db)
-    result, error = service.list_posts(page=page, per_page=per_page, cursor=cursor)
+    result, error = service.list_posts(page=page, per_page=per_page, cursor=cursor, user_id=current_user.id)
 
     if error:
         status_code, message = error
