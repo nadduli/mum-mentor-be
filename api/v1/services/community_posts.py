@@ -95,6 +95,7 @@ class CommunityPostService:
         page: int = 1,
         per_page: int = 20,
         cursor: Optional[str] = None,
+        user_id: Optional[UUID] = None,
     ) -> Tuple[Optional[dict], Optional[Tuple[int, str]]]:
         """Return paginated posts ordered by newest first with likes and comments counts."""
         try:
@@ -178,6 +179,17 @@ class CommunityPostService:
                 post = result[0]
                 post.likes_count = result[1]
                 post.comments_count = result[2]
+                
+                # Check if current user liked this post
+                if user_id:
+                    is_liked = self.db.query(PostLike).filter(
+                        PostLike.post_id == post.id,
+                        PostLike.user_id == user_id
+                    ).first() is not None
+                    post.is_liked = is_liked
+                else:
+                    post.is_liked = False
+                
                 items.append(post)
 
             # Compute next cursor

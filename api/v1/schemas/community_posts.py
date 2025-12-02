@@ -31,6 +31,7 @@ class PostResponse(BaseModel):
     photos: List["PostPhotoResponse"] = []
     likes_count: int = 0
     comments_count: int = 0
+    is_liked: bool = False
 
 
 class PostPhotoResponse(BaseModel):
