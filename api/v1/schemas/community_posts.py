@@ -29,10 +29,8 @@ class PostResponse(BaseModel):
     views: int
     created_at: datetime
     photos: List["PostPhotoResponse"] = []
-    comments: List["PostCommentResponse"] = []
     likes_count: int = 0
     comments_count: int = 0
-    is_liked: bool = False
 
 
 class PostPhotoResponse(BaseModel):
