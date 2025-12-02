@@ -9,6 +9,7 @@ from sqlalchemy import desc, asc
 from sqlalchemy import func, select
 from api.v1.models.community.post_likes import PostLike
 from api.v1.models.community.post_comments import PostComment 
+from sqlalchemy.exc import SQLAlchemyError
 
 from api.utils.logger import logger
 from api.v1.models.community.posts import Post
@@ -88,6 +89,37 @@ class CommunityPostService:
             self.db.rollback()
             return None, (500, "Failed to create post")
 
+    def delete_post(self, *, post_id: UUID, user_id: UUID) -> Tuple[bool, Optional[Tuple[int, str]]]:
+        """Delete a community post if it belongs to the given user.
+
+        Returns:
+            (True, None) on success.
+            (False, (status_code, message)) on failure.
+        """
+        try:
+            # Fetch the post
+            post = self.db.query(Post).filter(Post.id == post_id).with_for_update().first()
+            if not post:
+                return False, (404, "Post not found")
+
+            # Authorization check
+            if post.user_id != user_id:
+                return False, (403, "Not authorized to delete this post")
+
+            # Perform deletion
+            self.db.delete(post)
+            self.db.commit()
+            logger.info("Community post deleted | post_id=%s | user_id=%s", post_id, user_id)
+            return True, None
+        except SQLAlchemyError as exc:
+            self.db.rollback()
+            logger.error(
+                "Error deleting community post | post_id=%s | user_id=%s | error=%s",
+                post_id,
+                user_id,
+                exc,
+            )
+            return False, (500, "Failed to delete post")
 
     def list_posts(
         self,
@@ -95,6 +127,7 @@ class CommunityPostService:
         page: int = 1,
         per_page: int = 20,
         cursor: Optional[str] = None,
+        user_id: Optional[UUID] = None,
     ) -> Tuple[Optional[dict], Optional[Tuple[int, str]]]:
         """Return paginated posts ordered by newest first with likes and comments counts."""
         try:
@@ -133,7 +166,8 @@ class CommunityPostService:
                 .outerjoin(comments_subquery, Post.id == comments_subquery.c.post_id)
                 .options(
                     joinedload(Post.user),
-                    subqueryload(Post.photos)
+                    subqueryload(Post.photos),
+                    subqueryload(Post.comments).joinedload('user')
                 )
                 .order_by(Post.created_at.desc(), Post.id.desc())
             )
@@ -178,6 +212,17 @@ class CommunityPostService:
                 post = result[0]
                 post.likes_count = result[1]
                 post.comments_count = result[2]
+                
+                # Check if current user liked this post
+                if user_id:
+                    is_liked = self.db.query(PostLike).filter(
+                        PostLike.post_id == post.id,
+                        PostLike.user_id == user_id
+                    ).first() is not None
+                    post.is_liked = is_liked
+                else:
+                    post.is_liked = False
+                
                 items.append(post)
 
             # Compute next cursor

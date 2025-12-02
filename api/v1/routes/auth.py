@@ -79,6 +79,7 @@ async def delete_account(
     
     - **password**: Current password for confirmation
     - **confirmation_phrase**: Must be exactly "DELETE MY ACCOUNT"
+    - **reason**: Optional reason for deletion (max 100 characters)
     
     This action cannot be undone. All user data will be permanently removed.
     """
@@ -94,7 +95,7 @@ async def delete_account(
 
     # Delete account
     success, error = AccountService.delete_user_account(
-        db, str(current_user.id), request.password
+        db, str(current_user.id), request.password, request.reason
     )
     
     if not success:
@@ -134,7 +135,11 @@ The Nora Team"""
         )
         # Don't fail the request if email fails
 
-    logger.info("Account successfully deleted for user: %s", current_user.email)
+    logger.info(
+        "Account successfully deleted for user: %s%s",
+        current_user.email,
+        f" (Reason: {request.reason})" if request.reason else ""
+    )
     
     return success_response(
         status_code=status.HTTP_200_OK,

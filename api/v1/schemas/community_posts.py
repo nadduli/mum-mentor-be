@@ -41,6 +41,27 @@ class PostPhotoResponse(BaseModel):
     url: str
 
 
+class PostCommentUserResponse(BaseModel):
+    """User info for comment responses"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    full_name: str
+
+
+class PostCommentResponse(BaseModel):
+    """Comment info for post responses"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    post_id: UUID
+    user_id: UUID
+    user: PostCommentUserResponse
+    comment: str
+    created_at: datetime
+    parent_id: Optional[UUID] = None
+
+
 class CommentCreateRequest(BaseModel):
     comment: str
 
